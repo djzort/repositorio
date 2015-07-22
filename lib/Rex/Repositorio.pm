@@ -54,7 +54,7 @@ sub run {
   my ( $self, %option ) = @_;
 
   # this config checking/munging stuff should probably be in the 'has config' definition?
-  $self->config->{RepositoryRoot} =~ s/\/$//;
+  $self->config->{RepositoryRoot} =~ s{/$}{};
   $self->logger->logcroak(qq/"all" is a reserved word and cannot be used as a repo name\n/)
     if grep { $_ eq 'all' } keys %{ $self->config->{Repository} };
   $self->config->{TagStyle} ||= 'TopDir';
@@ -621,6 +621,7 @@ sub _help {
     '--add-file=file     add a file to a repository (needs --repo)',
     '--remove-file=file  remove a file from a repository (needs --repo)',
     '--list              list known repositories',
+    '--listtags          list known tags (needs --repo)',
     '--server            start a server for file delivery. (not available for all repository types)',
     '--update-errata     updates the errata database for a repo (needs --repo)',
     '--errata            query errata for a package (needs --repo, --package, --version, --arch)',
@@ -688,6 +689,8 @@ create consistant installations of your server.
 =item --remove-file=file  remove a file from a repository (needs --repo)
 
 =item --list              list known repositories
+
+=item --listtags          list known tags (needs --repo)
 
 =item --server            start a server for file delivery. (not available for all repository types)
 
