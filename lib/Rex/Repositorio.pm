@@ -16,7 +16,7 @@ use XML::Simple;
 use Params::Validate qw(:all);
 use IO::All;
 use File::Path;
-use File::Basename qw'dirname';
+use File::Basename qw( dirname );
 use File::Spec;
 use File::Copy;
 use Rex::Repositorio::Repository_Factory;
@@ -87,7 +87,7 @@ sub parse_cli_option {
     my $update_files = 1;
 
    # so it is possible to only update metadata. (for example: for proxy support)
-    if ( exists $option{"no-update-files"} && $option{"no-update-files"} ) {
+    if ( exists $option{'no-update-files'} && $option{'no-update-files'} ) {
       $update_files = 0;
     }
 
@@ -106,10 +106,10 @@ sub parse_cli_option {
 
   elsif ( exists $option{tag} && exists $option{repo} ) {
     $self->tag(
-      tag => $option{tag},
+      tag      => $option{tag},
       clonetag => $option{clonetag} || 'head',
-      repo => $option{repo},
-      force => $option{force} || 0,
+      repo     => $option{repo},
+      force    => $option{force} || 0,
     );
   }
 
@@ -133,6 +133,10 @@ sub parse_cli_option {
 
   elsif ( exists $option{server} && exists $option{repo} ) {
     $self->server( repo => $option{repo} );
+  }
+
+  elsif ( exists $option{repo} && exists $option{listtags} ) {
+    $self->list_tags( repo => $option{repo} );
   }
 
   elsif ( exists $option{list} ) {
@@ -244,12 +248,105 @@ sub remove_file {
   $repo_o->remove_file( file => $option{file} );
 }
 
+sub list_tags {
+  my $self  = shift;
+  my %option = validate(
+    @_,
+    {
+      repo => {
+        type => SCALAR
+      },
+    }
+  );
+
+  my $repo_config = $self->config->{Repository}->{ $option{repo} };
+  my $root_dir    = $self->config->{RepositoryRoot};
+  $repo_config->{local} =~ s{/$}{}; # TODO: do this centrally
+
+  my @tags;
+
+  # should probably use get_repo_dir ?
+  if ($self->config->{TagStyle} eq 'TopDir') {
+
+    opendir my $dh, $root_dir
+        or $self->logger->logcroak("Failed to open $root_dir: $!\n");
+
+    while ( my $entry = readdir $dh ) {
+      next if ( $entry eq '.' || $entry eq '..' );
+
+      my $baseentry = File::Spec->catdir($root_dir, $entry);
+
+      # links are tag aliases
+      if (-l $baseentry) {
+        my $target = readlink( $baseentry );
+        $self->logger->logcroak("Broken alias, doesn't link a directory?: $baseentry")
+          unless -d $target;
+        next unless -d File::Spec->catdir($target, $repo_config->{local});
+        $target =~ s{^$root_dir}{};
+        push @tags, "$entry -> $target";
+        next
+      }
+
+      # directories are tags
+      if (-d $baseentry) {
+        next if $entry eq 'head';
+        push @tags, $entry if -d File::Spec->catdir($baseentry, $repo_config->{local});
+        next
+      }
+
+      $self->logger->logcroak("Some strange file here: $baseentry");
+
+    }
+
+  }
+  elsif ($self->config->{TagStyle} eq 'BottomDir') {
+
+    my $base = File::Spec->catdir($root_dir, $repo_config->{local});
+    opendir my $dh, $base
+        or $self->logger->logcroak("Failed to open $base: $!\n");
+
+    while ( my $entry = readdir $dh ) {
+      next if ( $entry eq '.' || $entry eq '..' );
+
+      my $baseentry = File::Spec->catdir($base, $entry);
+
+      # links are tag aliases
+      if (-l $baseentry) {
+        my $target = readlink( $baseentry );
+        $self->logger->logcroak("Broken alias, doesn't link a directory?: $baseentry")
+          unless -d $target ;
+        $target =~ s{^$base}{};
+        push @tags, "$entry -> $target";
+        next
+      }
+
+      # directories are tags
+      if (-d $baseentry) {
+        next if $entry eq 'head';
+        push @tags, $entry;
+        next
+      }
+
+      $self->logger->logcroak("Some strange file here: $baseentry");
+
+    }
+  }
+  else {
+    # add other styles here
+    $self->logger->logcroak('Shouldnt have gotten here');
+  }
+
+  $self->_print('head', sort @tags);
+}
+
 sub list {
   my $self  = shift;
+
   my @repos = keys %{ $self->config->{Repository} };
 
   $self->_print(@repos);
 }
+
 
 sub update_errata {
   my $self   = shift;
@@ -433,7 +530,7 @@ sub tag {
 
   my $repo_config = $self->config->{Repository}->{ $option{repo} };
   my $root_dir    = $self->config->{RepositoryRoot};
-  $repo_config->{local} =~ s{/$}{};
+  $repo_config->{local} =~ s{/$}{}; # TODO: do this centrally
 
   my (@dirs, $tag_dir);
 

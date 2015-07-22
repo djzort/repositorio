@@ -121,6 +121,8 @@ create consistant installations of your server.
 
 =item --list              list known repositories
 
+=item --listtags          list known tags (needs --repo)
+
 =item --server            start a server for file delivery. (not available for all repository types)
 
 =item --update-errata     updates the errata database for a repo (needs --repo)",
