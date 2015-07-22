@@ -37,7 +37,7 @@ sub ua {
 
   if ( $self->config->{DownloadTimeout} ) {
     $self->logger->debug(
-      "Setting download timeout to: " . $self->config->{DownloadTimeout} );
+      'Setting download timeout to: ' . $self->config->{DownloadTimeout} );
     $ua->timeout( $self->config->{DownloadTimeout} );
   }
 
@@ -81,7 +81,7 @@ sub parse_cli_option {
 
   if ( exists $option{mirror} && exists $option{repo} ) {
     $self->print_info(
-      "Going to mirror " . $option{repo} . ". This may take a while." );
+      'Going to mirror ' . $option{repo} . '. This may take a while.' );
     print "\n";
 
     my $update_files = 1;
@@ -93,14 +93,14 @@ sub parse_cli_option {
 
     $self->mirror(
       repo            => $option{repo},
-      update_metadata => ( $option{"update-metadata"} || 0 ),
+      update_metadata => ( $option{'update-metadata'} || 0 ),
       update_files    => $update_files,
-      force           => ( $option{"force-download"} || 0 ),
+      force           => ( $option{'force-download'} || 0 ),
     );
 
     print "\n";
     print "\n";
-    $self->print_info( "Finished downloading of files for " . $option{repo} );
+    $self->print_info( 'Finished downloading of files for ' . $option{repo} );
     print "\n";
   }
 
@@ -113,7 +113,7 @@ sub parse_cli_option {
     );
   }
 
-  elsif ( exists $option{repo} && exists $option{"update-errata"} ) {
+  elsif ( exists $option{repo} && exists $option{'update-errata'} ) {
     $self->update_errata( repo => $option{repo} );
   }
 
@@ -143,12 +143,12 @@ sub parse_cli_option {
     $self->init( repo => $option{repo} );
   }
 
-  elsif ( exists $option{"add-file"} && exists $option{repo} ) {
-    $self->add_file( file => $option{"add-file"}, repo => $option{repo} );
+  elsif ( exists $option{'add-file'} && exists $option{repo} ) {
+    $self->add_file( file => $option{'add-file'}, repo => $option{repo} );
   }
 
-  elsif ( exists $option{"remove-file"} && exists $option{repo} ) {
-    $self->remove_file( file => $option{"remove-file"}, repo => $option{repo} );
+  elsif ( exists $option{'remove-file'} && exists $option{repo} ) {
+    $self->remove_file( file => $option{'remove-file'}, repo => $option{repo} );
   }
 
   else {
@@ -175,11 +175,11 @@ sub server {
   $ENV{'REPO_NAME'}   = $option{repo};
   $ENV{'MOJO_MAX_MESSAGE_SIZE'} = 1024 * 1024 * 1024 * 1024; # set max_message_size astronomically high / TODO: make it configurable
   my $server_type = $self->config->{Repository}->{ $option{repo} }->{type};
-  if ( $server_type eq "Apt"
-    || $server_type eq "OpenSuSE"
-    || $server_type eq "Plain" )
+  if ( $server_type eq 'Apt'
+    || $server_type eq 'OpenSuSE'
+    || $server_type eq 'Plain' )
   {
-    $server_type = "Yum";
+    $server_type = 'Yum';
   }
   Mojolicious::Commands->start_app("Rex::Repositorio::Server::$server_type");
 }
@@ -385,7 +385,7 @@ sub mirror {
   );
 
   my @repositories = ( $option{repo} );
-  if ( $option{repo} eq "all" ) {
+  if ( $option{repo} eq 'all' ) {
     @repositories = keys %{ $self->config->{Repository} };
   }
 
@@ -433,7 +433,7 @@ sub tag {
 
   my $repo_config = $self->config->{Repository}->{ $option{repo} };
   my $root_dir    = $self->config->{RepositoryRoot};
-  $repo_config->{local} =~ s/\/$//;
+  $repo_config->{local} =~ s{/$}{};
 
   my (@dirs, $tag_dir);
 
@@ -575,9 +575,9 @@ sub progress_bar {
 
 sub print_info {
   my ( $self, $msg ) = @_;
-  print color "bold green";
-  print ">> ";
-  print color "reset";
+  print color 'bold green';
+  print '>> ';
+  print color 'reset';
 
   my @parts = split( / /, $msg );
   my $current_line_len = 3;
@@ -600,7 +600,7 @@ sub _print {
   my @lines = @_;
 
   print "repositorio: $VERSION\n";
-  print "-" x 80;
+  print '-' x 80;
   print "\n";
   print "$_\n" for @lines;
 }
@@ -609,25 +609,25 @@ sub _help {
   my ($self) = @_;
 
   $self->_print(
-    "--mirror            mirror a configured repository (needs --repo, use \"all\" for all repos)",
-    "--tag=tagname       tag a repository (needs --repo)",
-    "--clonetag=tagname  clones a tag in a repository (needs --repo and new --tag)",
-    "--repo=reponame     the name of the repository to use",
-    "--update-metadata   update the metadata of a repository",
-    "--update-files      download files even if they are already downloaded",
-    "--force-download    force the download of already downloaded files",
-    "--no-update-files   do not download packages",
-    "--init              initialize an empty repository",
-    "--add-file=file     add a file to a repository (needs --repo)",
-    "--remove-file=file  remove a file from a repository (needs --repo)",
-    "--list              list known repositories",
-    "--server            start a server for file delivery. (not available for all repository types)",
-    "--update-errata     updates the errata database for a repo (needs --repo)",
-    "--errata            query errata for a package (needs --repo, --package, --version, --arch)",
-    "  --package=pkg     for which package the errata should be queries",
-    "  --version=ver     for which version of a package the errata should be queries",
-    "  --arch=arch       for which architecture of a package the errata should be queries",
-    "--help              display this help message",
+    '--mirror            mirror a configured repository (needs --repo, use "all" for all repos)',
+    '--tag=tagname       tag a repository (needs --repo)',
+    '--clonetag=tagname  clones a tag in a repository (needs --repo and new --tag)',
+    '--repo=reponame     the name of the repository to use',
+    '--update-metadata   update the metadata of a repository',
+    '--update-files      download files even if they are already downloaded',
+    '--force-download    force the download of already downloaded files',
+    '--no-update-files   do not download packages',
+    '--init              initialize an empty repository',
+    '--add-file=file     add a file to a repository (needs --repo)',
+    '--remove-file=file  remove a file from a repository (needs --repo)',
+    '--list              list known repositories',
+    '--server            start a server for file delivery. (not available for all repository types)',
+    '--update-errata     updates the errata database for a repo (needs --repo)',
+    '--errata            query errata for a package (needs --repo, --package, --version, --arch)',
+    '  --package=pkg     for which package the errata should be queries',
+    '  --version=ver     for which version of a package the errata should be queries',
+    '  --arch=arch       for which architecture of a package the errata should be queries',
+    '--help              display this help message',
   );
 
 }
