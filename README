@@ -1,0 +1,33 @@
+NAME
+
+    rpio - Repository Management
+
+SYNOPSIS
+
+    rpio --action X [options]
+
+     Actions:
+       mirror         Mirror a configured repository (requires --repo, use \'all\' for all configured repositories)
+       tag            Tag a repository (requires --repo)
+       list           List all configured repositories
+       init           Initialise a custom repository (requires --repo)
+       add-files      Add files to a custom repository (requires --repo)
+       remove-files   Remove files from a custom repository (requires --repo)
+
+     Options:
+       --repo           The name of the repo for your action
+       --checksums      When mirroring a repository use checksums for downloaded packages rather than size
+       --log-level      Change the stdout log level (overrides config)
+       --help           This helpful message
+
+Examples
+
+      rpio --action mirror --repo centos-6-epel
+      rpio --action tag --repo centos-6-epel --tag release_20150827
+      rpio --action tag --repo centos-6-epel --src-tag release_20150827 --symlink --tag production
+
+      This will:
+       1. update centos-6-epel to the current upstream version
+       2. create a hardlink copy of head to release_20150827
+       3. create a symlink of release_20150827 to production
+

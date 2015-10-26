@@ -1,0 +1,115 @@
+#!perl
+# PODNAME: rpio
+# ABSTRACT: Repositorio Repository Management
+
+
+use strict;
+use warnings;
+
+use Config::General;
+use Getopt::Long;
+use Log::Dispatch;
+use Pod::Usage;
+
+use App::Repositorio;
+
+# VERSION
+
+my $config_file = 'conf/repositorio.conf';
+my $log_level;
+my $help;
+my $app_options = {};
+
+GetOptions(
+  # App Options
+  'action=s'  => \$app_options->{'action'},
+  'file=s@'   => \$app_options->{'file'},
+  'arch=s'    => \$app_options->{'arch'},
+  'checksums' => \$app_options->{'checksums'},
+  'force'     => \$app_options->{'force'},
+  'repo=s'    => \$app_options->{'repo'},
+  'tag=s'     => \$app_options->{'tag'},
+  'src-tag=s' => \$app_options->{'src-tag'},
+  'symlink'   => \$app_options->{'symlink'},
+  # Script options
+  'config-file=s' => \$config_file,
+  'log-level=s'   => \$log_level,
+  'h|help'        => \$help,
+)
+or pod2usage(-verbose=>2, -output => \*STDERR);
+
+pod2usage(-verbose=>2, -output => \*STDERR) if $help;
+pod2usage(-verbose=>1, -output => \*STDERR) unless $action;
+
+my $conf_o = Config::General->new(
+    -ConfigFile         => $config_file,
+    -UseApacheInclude   => 1,
+    -IncludeDirectories => 1,
+    -IncludeGlob        => 1,
+    -IncludeRelative    => 1,
+    -IncludeAgain       => 1,
+    -AllowMultiOptions  => 1,
+);
+my $config = {$conf_o->getall};
+
+# Setup Default Config
+$config->{tag_style}      ||= 'bottomdir';
+$config->{log_file_level} ||= 'info';
+$config->{screen_level}   ||= 'notice';
+# We allow the cli to override the config for ScreenLevel
+$config->{screen_level} = $log_level if $log_level;
+
+# Setup Logging
+my $log_outputs = [
+  [ 'Screen', 'min_level' => $config->{screen_level}, stderr => 0, newline => 1, ],
+];
+push @{$log_outputs}, [
+  'File',
+  'min_level' => $config->{log_file_level},
+  'filename'  => $config->{log_file},
+  'newline'   => 1,
+  'mode'      => '>>',
+] if $config->{log_file};
+my $logger = Log::Dispatch->new(outputs => $log_outputs);
+$logger->debug('logging initialized.');
+
+my $a = App::Repositorio->new(config => $config, logger => $logger);
+my $action = delete $app_options->{'action'};
+# Params::Validate does not like undef which GetOptions will fill with options
+for my $param (keys %{$app_options}) {
+  delete $app_options->{$param} unless defined $app_options->{$param};
+}
+$a->go($action, $app_options) unless caller();
+
+__END__
+
+=head1 SYNOPSIS
+
+rpio --action X [options]
+
+ #XXX update these
+ Actions:
+   mirror    Mirror a configured repository (requires --repo, use \'all\' for all configured repositories)
+   tag       Tag a repository (requires --repo)
+   list      List all configured repositories
+   init      Initialise a custom repository (requires --repo)
+   add-file  Add files to a custom repository (requires --repo)
+   del-file  Remove files from a custom repository (requires --repo)
+
+ Options:
+   --repo           The name of the repo for your action
+   --checksums      When mirroring a repository use checksums for downloaded packages rather than size
+   --log-level      Change the stdout log level (overrides config)
+   --help           This helpful message
+
+=head1 Examples
+
+  rpio --action mirror --repo centos-6-epel
+  rpio --action tag --repo centos-6-epel --tag release_20150827
+  rpio --action tag --repo centos-6-epel --src-tag release_20150827 --symlink --tag production
+
+  This will:
+   1. update centos-6-epel to the current upstream version
+   2. create a hardlink copy of head to release_20150827
+   3. create a symlink of release_20150827 to production
+
