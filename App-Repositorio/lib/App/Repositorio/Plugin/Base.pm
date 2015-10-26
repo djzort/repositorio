@@ -153,7 +153,7 @@ sub mirror {
   my $self = shift;
 
   for my $arch (@{$self->arches()}) {
-    $self->logger->info(sprintf("mirror: starting repo: %s arch: %s from url: %s to dir: %s", $self->repo, $arch, $self->url, $self->dir));
+    $self->logger->info(sprintf('mirror; starting repo: %s arch: %s from url: %s to dir: %s', $self->repo, $arch, $self->url, $self->dir));
     my $packages = $self->get_metadata($arch);
     $self->get_packages(arch => $arch, packages => $packages);
   }
@@ -162,7 +162,7 @@ sub mirror {
 sub clean {
   my $self = shift;
 
-  $self->logger->info(sprintf("clean: starting repo: %s in dir: %s", $self->repo, $self->dir));
+  $self->logger->info(sprintf('clean; starting repo: %s in dir: %s', $self->repo, $self->dir));
   for my $arch (@{$self->arches()}) {
     my $files = $self->read_metadata($arch);
     $self->clean_files(arch => $arch, files => $files);
@@ -173,7 +173,7 @@ sub clean {
 sub init {
   my $self = shift;
   my $arch = shift;
-  $self->logger->info(sprintf 'init: repo: %s dir: %s', $self->repo(), $self->dir());
+  $self->logger->info(sprintf 'init; repo: %s dir: %s', $self->repo(), $self->dir());
   if ($arch) {
     $self->init_arch($arch);
   }
@@ -195,12 +195,12 @@ sub tag {
     symlink  => { type => BOOLEAN, default => 0 },
   });
 
-  $self->logger->debug(sprintf('tag: repo: %s tagging: %s -> %s', $self->repo(), $o{'src_dir'}, $o{'dest_dir'}));
+  $self->logger->debug(sprintf('tag; repo: %s tagging: %s -> %s', $self->repo(), $o{'src_dir'}, $o{'dest_dir'}));
 
   # When src_dir does not exist do not continue
   $self->logger->log_and_die(
     level   => 'error',
-    message => sprintf("tag: repo: %s src_dir: %s does not exist", $self->repo(), $o{'src_dir'}),
+    message => sprintf('tag; repo: %s src_dir: %s does not exist', $self->repo(), $o{'src_dir'}),
   ) unless -d $o{'src_dir'};
 
   # When dest_dir exists and force is not set do not continue
@@ -212,7 +212,7 @@ sub tag {
     else {
       $self->logger->log_and_die(
         level   => 'error',
-        message => sprintf("tag: repo: %s dest_dir: %s exists and force not enabled.", $self->repo(), $o{'dest_dir'}),
+        message => sprintf('tag; repo: %s dest_dir: %s exists and force not enabled.', $self->repo(), $o{'dest_dir'}),
       );
     }
   }
@@ -224,7 +224,7 @@ sub tag {
     else {
       $self->logger->log_and_die(
         level   => 'error',
-        message => sprintf("tag: repo: %s dest_dir: %s exists and force not enabled.", $self->repo(), $o{'dest_dir'}),
+        message => sprintf('tag; repo: %s dest_dir: %s exists and force not enabled.', $self->repo(), $o{'dest_dir'}),
       );
     }
   }
@@ -234,7 +234,7 @@ sub tag {
   # handle hardlinked destination
   unless ($o{'symlink'}) {
     $self->make_dir($o{'dest_dir'});
-    $self->logger->debug(sprintf('tag: repo: %s hardlink src_dir: %s dest_dir: %s', $self->repo(), $o{'src_dir'}, $o{'dest_dir'}));
+    $self->logger->debug(sprintf('tag; repo: %s hardlink src_dir: %s dest_dir: %s', $self->repo(), $o{'src_dir'}, $o{'dest_dir'}));
     find(
       sub {
         if (
@@ -249,12 +249,12 @@ sub tag {
             my $dest_path = File::Spec->catfile($o{'dest_dir'}, $path);
 
             if (link $src_path, $dest_path) {
-              $self->logger->debug(sprintf('tag: repo: %s hardlink: %s', $self->repo(), $path));
+              $self->logger->debug(sprintf('tag; repo: %s hardlink: %s', $self->repo(), $path));
             }
             else {
               $self->logger->log_and_croak(
                 level => 'error',
-                message => sprintf('tag: repo: %s failed to hardlink: %s to %s',
+                message => sprintf('tag; repo: %s failed to hardlink: %s to %s',
                   $self->repo(),
                   $src_path,
                   $dest_path,
@@ -272,12 +272,12 @@ sub tag {
   # handle symlink destination
   else {
     if (symlink $o{'src_dir'}, $o{'dest_dir'}) {
-      $self->logger->debug(sprintf('tag: repo: %s symlink src_dir: %s dest_dir: %s', $self->repo(), $o{'src_dir'}, $o{'dest_dir'}));
+      $self->logger->debug(sprintf('tag; repo: %s symlink src_dir: %s dest_dir: %s', $self->repo(), $o{'src_dir'}, $o{'dest_dir'}));
     }
     else {
       $self->logger->log_and_die(
         level   => 'error',
-        message => sprintf("tag: repo: %s couldnt link src_dir: %s to dst_dir: %s: $!", $self->repo(), $o{'src_dir'}, $o{'dest_dir'}),
+        message => sprintf("tag; repo: %s couldnt link src_dir: %s to dst_dir: %s: $!", $self->repo(), $o{'src_dir'}, $o{'dest_dir'}),
       );
     }
   }
@@ -293,7 +293,7 @@ sub download_binary_file {
 
   $self->logger->debug(
     sprintf(
-      'download_binary_file: repo: %s url: %s dest: %s',
+      'download_binary_file; repo: %s url: %s dest: %s',
       $self->repo(),
       $o{url},
       $o{dest},
@@ -311,7 +311,7 @@ sub download_binary_file {
 
     $self->logger->debug(
       sprintf(
-        'download_binary_file: repo: %s url: %s took: %s',
+        'download_binary_file; repo: %s url: %s took: %s',
         $self->repo(),
         $o{url},
         $elapsed,
@@ -324,7 +324,7 @@ sub download_binary_file {
     else {
       $self->logger->debug(
         sprintf(
-          'download_binary_file: repo: %s url: %s failed with status: %s',
+          'download_binary_file; repo: %s url: %s failed with status: %s',
           $self->repo(),
           $o{url},
           $res->status_line,
@@ -334,7 +334,7 @@ sub download_binary_file {
       if ($retry_count <= $retry_limit) {
         $self->logger->debug(
           sprintf(
-            'download_binary_file: repo: %s url: %s retrying',
+            'download_binary_file; repo: %s url: %s retrying',
             $self->repo(),
             $o{url},
           )
@@ -344,7 +344,7 @@ sub download_binary_file {
         $self->logger->log_and_croak(
           level => 'error',
           message => sprintf(
-            'download_binary_file: repo: %s url: %s failed and exhausted all retries',
+            'download_binary_file; repo: %s url: %s failed and exhausted all retries',
             $self->repo(),
             $o{url},
           )

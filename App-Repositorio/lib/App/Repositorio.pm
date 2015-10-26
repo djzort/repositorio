@@ -133,7 +133,7 @@ sub _validate_config {
         ) {
           $self->logger->log_and_croak(
             level   => 'error',
-            message => sprintf "repo: %s param: %s value: %s is not supported", $repo, $param, $self->config->{repo}->{$repo}->{$param},
+            message => sprintf 'repo; %s param: %s value: %s is not supported', $repo, $param, $self->config->{repo}->{$repo}->{$param},
           );
         }
       }

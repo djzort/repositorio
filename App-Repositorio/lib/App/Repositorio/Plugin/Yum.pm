@@ -192,11 +192,11 @@ sub get_packages {
 
     # Grab the file
     if ($download) {
-      $self->logger->notice(sprintf('get_packages: repo: %s arch: %s package: %s', $self->repo(), $arch, $name));
+      $self->logger->notice(sprintf('get_packages; repo: %s arch: %s package: %s', $self->repo(), $arch, $name));
       $self->download_binary_file(url => $p_url, dest => $dest_file);
     }
     else {
-      $self->logger->debug(sprintf('get_packages: repo: %s arch: %s package: %s skipping as its deemed up to date', $self->repo(), $arch, $name));
+      $self->logger->debug(sprintf('get_packages; repo: %s arch: %s package: %s skipping as its deemed up to date', $self->repo(), $arch, $name));
     }
   }
 }
@@ -219,7 +219,7 @@ sub clean_files {
         if (-f $file) {
           my $rel = File::Spec->abs2rel($File::Find::name, $base_dir);
           unless ($o{'files'}->{$rel}) {
-            $self->logger->info("clean_files: removing non referenced file: ${File::Find::name}");
+            $self->logger->info("clean_files; removing non referenced file: ${File::Find::name}");
             unlink $file or $self->logger->log_and_croak(level => 'error', message => "Failed to remove file: ${file}: $!");
           }
         }
@@ -241,13 +241,13 @@ sub add_file {
   for my $file (@${files}) {
     my $filename = basename($file);
     my $dest_file = File::Spec->catfile($self->dir(), $arch, $self->packages_dir(), $filename);
-    $self->logger->debug(sprintf 'add_file: repo: %s arch: %s file: %s dest_file: %s', $self->repo(), $arch, $file, $dest_file);
+    $self->logger->debug(sprintf 'add_file; repo: %s arch: %s file: %s dest_file: %s', $self->repo(), $arch, $file, $dest_file);
 
     if (-f $dest_file && ! $self->force()) {
-      $self->logger->log_and_croak(level => 'error', message => sprintf 'add_file: repo: %s dest_file exists and force not enabled: %s', $self->repo(), $dest_file);
+      $self->logger->log_and_croak(level => 'error', message => sprintf 'add_file; repo: %s dest_file exists and force not enabled: %s', $self->repo(), $dest_file);
     }
 
-    copy ($file, $dest_file) || $self->logger->log_and_croak(level => 'error', message => sprintf 'add_file: repo: %s failed to copy file to destination: %s', $self->repo(), $!);
+    copy ($file, $dest_file) || $self->logger->log_and_croak(level => 'error', message => sprintf 'add_file; repo: %s failed to copy file to destination: %s', $self->repo(), $!);
 
   }
 
@@ -261,19 +261,19 @@ sub del_file {
   my $files = shift;
 
   unless ($self->validate_arch($arch)) {
-    $self->logger->log_and_croak(level => 'error', message => sprintf 'del_file: arch: %s is not in config for repo: %s', $arch, $self->repo());
+    $self->logger->log_and_croak(level => 'error', message => sprintf 'del_file; arch: %s is not in config for repo: %s', $arch, $self->repo());
   }
 
   for my $file (@${files}) {
     my $filename = basename($file);
     my $dest_file = File::Spec->catfile($self->dir(), $arch, $self->packages_dir(), $filename);
-    $self->logger->debug(sprintf 'del_file: repo: %s arch: %s dest_file: %s', $self->repo(), $arch, $dest_file);
+    $self->logger->debug(sprintf 'del_file; repo: %s arch: %s dest_file: %s', $self->repo(), $arch, $dest_file);
 
     unless (-f $dest_file) {
-      $self->logger->log_and_croak(level => 'error', message => sprintf 'del_file: repo: %s dest_file: %s does not exist', $self->repo(), $dest_file);
+      $self->logger->log_and_croak(level => 'error', message => sprintf 'del_file; repo: %s dest_file: %s does not exist', $self->repo(), $dest_file);
     }
 
-    unlink $dest_file || $self->logger->log_and_croak(level => 'error', message => sprintf 'del_file: repo: %s failed to del file: %s from destination: %s', $self->repo(), $dest_file, $!);
+    unlink $dest_file || $self->logger->log_and_croak(level => 'error', message => sprintf 'del_file; repo: %s failed to del file: %s from destination: %s', $self->repo(), $dest_file, $!);
 
   }
 
@@ -286,7 +286,7 @@ sub init_arch {
 
   my $dir = File::Spec->catdir($self->dir, $arch);
 
-  $self->logger->debug(sprintf 'init_arch: repo: %s arch: %s dir: %s', $self->repo(), $arch, $dir);
+  $self->logger->debug(sprintf 'init_arch; repo: %s arch: %s dir: %s', $self->repo(), $arch, $dir);
 
   $self->make_dir($dir);
   $self->make_dir(File::Spec->catdir($dir, $self->packages_dir()));
@@ -299,7 +299,7 @@ sub init_arch {
   unless ($createrepo_bin and -x $createrepo_bin) {
     $self->logger->log_and_croak(
       level   => 'error',
-      message => sprintf('init_arch: repo: %s arch: %s unable to find createrepo program in path', $self->repo(), $arch),
+      message => sprintf('init_arch; repo: %s arch: %s unable to find createrepo program in path', $self->repo(), $arch),
     );
   }
 
@@ -312,12 +312,12 @@ sub init_arch {
     }
   }
 
-  $self->logger->debug(sprintf 'init_arch: running command: %s', join(' ', @cmd));
+  $self->logger->debug(sprintf 'init_arch; running command: %s', join(' ', @cmd));
   unless (system(@cmd) == 0) {
     $self->logger->log_and_croak(
       level   => 'error',
       message => sprintf(
-        'init_arch: repo: %s failed to run command: %s with exit code: %s',
+        'init_arch; repo: %s failed to run command: %s with exit code: %s',
         $self->repo(),
         join(' ', @cmd),
         $?,
