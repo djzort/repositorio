@@ -39,7 +39,7 @@ GetOptions(
 or pod2usage(-verbose=>2, -output => \*STDERR);
 
 pod2usage(-verbose=>2, -output => \*STDERR) if $help;
-pod2usage(-verbose=>1, -output => \*STDERR) unless $action;
+pod2usage(-verbose=>1, -output => \*STDERR) unless $app_options->{'action'};
 
 my $conf_o = Config::General->new(
     -ConfigFile         => $config_file,
