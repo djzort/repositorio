@@ -58,20 +58,33 @@ sub go {
       {
         'repo'      => { type => SCALAR },
         'force'     => { type => BOOLEAN, default  => 0 },
-        'arch'      => { type => SCALAR, optional => 1 },
-        'checksums' => { type => SCALAR, optional => 1},
+        'regex'     => { type => BOOLEAN, default  => 0 },
+        'arch'      => { type => SCALAR,  optional => 1 },
+        'checksums' => { type => SCALAR,  optional => 1},
       },
     );
-    if ($options{'repo'} eq 'all') {
+    # treat the 'repo' as a regex
+    if ($options{'regex'}) {
       my %o = %options;
-      for my $repo (keys %{$self->config->{'repo'}}) {
+      my $regex = qr/$options{'repo'}/;
+      for my $repo (sort keys %{$self->config->{'repo'}}) {
+        next unless $repo =~ $regex;
         $o{'repo'} = $repo;
         $self->mirror(%o);
+        return 1
       }
     }
-    else {
-      $self->mirror(%options);
+    # 'all' is special case
+    if ($options{'repo'} eq 'all') {
+      my %o = %options;
+      for my $repo (sort keys %{$self->config->{'repo'}}) {
+        $o{'repo'} = $repo;
+        $self->mirror(%o);
+        return 1
+      }
     }
+    # fall back
+    return $self->mirror(%options);
   };
   $actions{'tag'} = sub {
     %options = validate(
