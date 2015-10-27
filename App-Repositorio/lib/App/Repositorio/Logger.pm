@@ -14,8 +14,7 @@ my $logger;
 
 sub load {
     die "Already loaded!\n" if $logger;
-    my $package = shift;
-    $logger = shift;
+    $logger = $_[1];
     return 1
 }
 
