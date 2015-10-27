@@ -24,7 +24,7 @@ use Time::HiRes qw(gettimeofday tv_interval);
 
 # VERSION
 
-has logger    => ( is => 'ro', default => sub {App::Repositorio::Logger->new()} );
+has logger    => ( is => 'ro', lazy => 1, default => sub {App::Repositorio::Logger->new()} );
 has repo      => ( is => 'ro', required => 1 );
 has dir       => ( is => 'ro', required => 1 );
 has url       => ( is => 'ro', optional => 1 );
@@ -176,15 +176,17 @@ sub _validate_file_sha256 {
 sub mirror {
   my $self = shift;
 
+  unless ($self->url) {
+      $self->logger->info(sprintf('mirror; (no url) skipping repo: %s', $self->repo));
+      return
+  }
+
   for my $arch (@{$self->arches()}) {
-    unless ($self->url) {
-        $self->logger->info(sprintf('mirror; (no url) skipping repo: %s arch: %s', $self->repo, $arch));
-        next
-    }
     $self->logger->info(sprintf('mirror; starting repo: %s arch: %s from url: %s to dir: %s', $self->repo, $arch, $self->url, $self->dir));
     my $packages = $self->get_metadata($arch);
     $self->get_packages(arch => $arch, packages => $packages);
   }
+  return 1
 
 }
 sub clean {

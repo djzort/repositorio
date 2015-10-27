@@ -12,6 +12,7 @@ use Log::Dispatch;
 use Pod::Usage;
 
 use App::Repositorio;
+use App::Repositorio::Logger;
 
 # VERSION
 
@@ -80,8 +81,9 @@ push @log_outputs, [
 
 my $logger = Log::Dispatch->new(outputs => \@log_outputs);
 $logger->debug('logging initialized.');
+App::Repositorio::Logger->load($logger);
 
-my $a = App::Repositorio->new(config => $config, logger => $logger);
+my $a = App::Repositorio->new(config => $config);
 my $action = delete $app_options->{'action'};
 # Params::Validate does not like undef which GetOptions will fill with options
 for my $param (keys %{$app_options}) {

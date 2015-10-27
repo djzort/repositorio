@@ -14,14 +14,10 @@ use Module::Pluggable::Object;
 use File::Spec;
 use App::Repositorio::Logger;
 
-
-
 # VERSION
 
-
 has config => ( is => 'ro' );
-has logger => ( is => 'ro', default => sub {App::Repositorio::Logger->new()} );
-
+has logger    => ( is => 'ro', lazy => 1, default => sub {App::Repositorio::Logger->new()} ); 
 =head1 DESCRIPTION
 
 App::Repositorio - An application to handle management of various software repositories
@@ -32,7 +28,6 @@ Please look at its pod for instantiating of this Module
 
   my $o = App::Repositorio->new(
     config => $hashref,
-    logger => Log::Dispatch->new()
   );
 
   $o->go($action, %options);
