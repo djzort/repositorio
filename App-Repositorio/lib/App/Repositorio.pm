@@ -341,26 +341,29 @@ sub clean {
     regex => { type => BOOLEAN, optional => 1 },
     force => { type => BOOLEAN, optional => 1, },
   });
-
-  if ($o{'repo'} eq 'all') {
+  # treat the 'repo' value as regex
+  if ($o{'regex'}) {
     my %options = %o;
+    my $regex = qr#$o{'repo'}#;
     for my $repo (keys %{$self->config->{'repo'}}) {
-      $options{'repo'} = $repo;
-      $self->_clean(%options);
-    }
-  }
-  elsif ($o{'regex'}) {
-    my %options = %o;
-    for my $repo (keys %{$self->config->{'repo'}}) {
-      if ($repo =~ m#$o{'repo'}#) {
+      if ($repo =~ $regex) {
         $options{'repo'} = $repo;
         $self->_clean(%options);
       }
     }
+    return 1
   }
-  else {
-    $self->_clean(%o);
+  # handle the 'all' special case
+  if ($o{'repo'} eq 'all') {
+    my %options = %o;
+    for my $repo (sort keys %{$self->config->{'repo'}}) {
+      $options{'repo'} = $repo;
+      $self->_clean(%options);
+    }
+    return 1
   }
+  # otherwise, do this
+  $self->_clean(%o);
 }
 
 sub _clean {
@@ -492,26 +495,29 @@ sub mirror {
     'checksums' => { type => SCALAR,  optional => 1 },
     'regex'     => { type => BOOLEAN, optional => 1 },
   });
-
+  # treat the 'repo' value as regex
+  if ($o{'regex'}) {
+    my %options = %o;
+    my $regex = qr#$o{'repo'}#;
+    for my $repo (sort keys %{$self->config->{'repo'}}) {
+      if ($repo =~ $regex) {
+        $options{'repo'} = $repo;
+        $self->_mirror(%options);
+      }
+    }
+    return 1
+  }
+  # handle the 'all' special case
   if ($o{'repo'} eq 'all') {
     my %options = %o;
     for my $repo (keys %{$self->config->{'repo'}}) {
       $options{'repo'} = $repo;
       $self->_mirror(%options);
     }
+    return 1
   }
-  elsif ($o{'regex'}) {
-    my %options = %o;
-    for my $repo (keys %{$self->config->{'repo'}}) {
-      if ($repo =~ m#$o{'repo'}#) {
-        $options{'repo'} = $repo;
-        $self->_mirror(%options);
-      }
-    }
-  }
-  else {
-    $self->_mirror(%o);
-  }
+  # otherwise, do this
+  $self->_mirror(%o);
 }
 
 sub _mirror {
