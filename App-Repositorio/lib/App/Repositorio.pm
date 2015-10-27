@@ -66,6 +66,7 @@ sub go {
     # treat the 'repo' as a regex
     if ($options{'regex'}) {
       my %o = %options;
+      delete $o{regex}; # dont pass this down
       my $regex = qr/$options{'repo'}/;
       for my $repo (sort keys %{$self->config->{'repo'}}) {
         next unless $repo =~ $regex;
