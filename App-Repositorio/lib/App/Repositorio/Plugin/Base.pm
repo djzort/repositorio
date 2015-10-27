@@ -177,7 +177,11 @@ sub mirror {
   my $self = shift;
 
   for my $arch (@{$self->arches()}) {
-    $self->logger->info(sprintf("mirror: starting repo: %s arch: %s from url: %s to dir: %s", $self->repo, $arch, $self->url, $self->dir));
+    unless ($self->url) {
+        $self->logger->info(sprintf('mirror; (no url) skipping repo: %s arch: %s', $self->repo, $arch));
+        next
+    }
+    $self->logger->info(sprintf('mirror; starting repo: %s arch: %s from url: %s to dir: %s', $self->repo, $arch, $self->url, $self->dir));
     my $packages = $self->get_metadata($arch);
     $self->get_packages(arch => $arch, packages => $packages);
   }
@@ -186,7 +190,7 @@ sub mirror {
 sub clean {
   my $self = shift;
 
-  $self->logger->info(sprintf("clean: starting repo: %s in dir: %s", $self->repo, $self->dir));
+  $self->logger->info(sprintf('clean; starting repo: %s in dir: %s', $self->repo, $self->dir));
   for my $arch (@{$self->arches()}) {
     my $files = $self->read_metadata($arch);
     $self->clean_files(arch => $arch, files => $files);
@@ -197,7 +201,7 @@ sub clean {
 sub init {
   my $self = shift;
   my $arch = shift;
-  $self->logger->info(sprintf 'init: repo: %s dir: %s', $self->repo(), $self->dir());
+  $self->logger->info(sprintf 'init; repo: %s dir: %s', $self->repo(), $self->dir());
   if ($arch) {
     $self->init_arch($arch);
   }
@@ -226,7 +230,7 @@ sub tag {
   if ($o{'hard_tag_regex'} && ! $o{'symlink'}) {
     $self->logger->log_and_die(
       level   => 'error',
-      message => sprintf("tag: repo: %s dest_tag: %s does not match hard_tag_regex: %s", $self->repo(), $o{'dest_tag'}, $o{'hard_tag_regex'}),
+      message => sprintf('tag; repo: %s dest_tag: %s does not match hard_tag_regex: %s', $self->repo(), $o{'dest_tag'}, $o{'hard_tag_regex'}),
     ) unless $o{'dest_tag'} =~ m#$o{'hard_tag_regex'}#;
   }
 
