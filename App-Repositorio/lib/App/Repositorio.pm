@@ -8,7 +8,6 @@ use strictures 2;
 use namespace::clean;
 use Carp;
 use Cwd qw(getcwd);
-use Data::Dumper;
 use Params::Validate qw(:all);
 use Module::Pluggable::Object;
 use File::Spec;
@@ -17,7 +16,19 @@ use App::Repositorio::Logger;
 # VERSION
 
 has config => ( is => 'ro' );
-has logger    => ( is => 'ro', lazy => 1, default => sub {App::Repositorio::Logger->new()} ); 
+has logger => ( is => 'ro', lazy => 1, default => sub {App::Repositorio::Logger->new()} );
+
+# these are for convenience
+my @repos;
+my %check_repo = (
+   'repo is configured' => sub {
+           my $r = shift;
+           my $v = shift;
+           return 1 if $v->{regex};
+           return ( grep {$r eq $_ } @repos ) ? 1 : 0
+   }
+);
+
 =head1 DESCRIPTION
 
 App::Repositorio - An application to handle management of various software repositories
@@ -56,7 +67,7 @@ Used to delete file/s from a local repository see L</"del_file()">
 
 =item B<clean>
 
-Used to clean a repository of no longer referenced files eg: no longer reference package versions or manifest files see L</"clean()"> 
+Used to clean a repository of no longer referenced files eg: no longer reference package versions or manifest files see L</"clean()">
 
 =item B<init>
 
@@ -93,7 +104,7 @@ sub go {
   };
 
   exists $dispatch->{$action} ||
-    $self->logger->log_and_croak(level => 'error', message => "ERROR: ${action} not supported.");
+    $self->logger->log_and_croak(level => 'error', message => "ERROR: ${action} not supported.\n");
 
   $dispatch->{$action}->($self, @args);
 
@@ -109,7 +120,7 @@ sub _validate_config {
   # Make sure data_dir exists
   $self->logger->log_and_croak(
     level   => 'error',
-    message => sprintf "datadir does not exist: %s", $self->config->{data_dir},
+    message => sprintf "datadir does not exist: %s\n", $self->config->{data_dir},
   ) unless -d $self->config->{data_dir};
 
   # Ensure tag style option is valid
@@ -119,13 +130,13 @@ sub _validate_config {
   ) unless $self->config->{tag_style} =~ m/^(?:top|bottom)dir$/;
 
   # required params for each repo config
-  for my $repo (sort keys %{$self->config->{'repo'}}) {
+  for my $repo (@repos) {
 
     #type local and arch are required params for ALL repos
     for my $param (qw/type local arch/) {
       $self->logger->log_and_croak(
         level   => 'error',
-        message => sprintf "repo: %s missing param: %s", $repo, $param,
+        message => sprintf "repo: %s missing param: %s\n", $repo, $param,
       ) unless $self->config->{repo}->{$repo}->{$param};
 
       # Data validation for specific types
@@ -136,23 +147,30 @@ sub _validate_config {
         my $arch = $self->config->{'repo'}->{$repo}->{'arch'};
         my $arches = ref($arch) eq 'ARRAY' ? $arch : [$arch];
         $self->config->{'repo'}->{$repo}->{'arch'} = $arches;
+        next
       }
 
       # Allowed types
-      elsif ($param eq 'type') {
-        unless (
+      if ($param eq 'type') {
+        unless ( # FIXME this should come from the loaded plugins
           $self->config->{repo}->{$repo}->{$param} eq 'Yum' ||
           $self->config->{repo}->{$repo}->{$param} eq 'Apt' ||
           $self->config->{repo}->{$repo}->{$param} eq 'Plain',
         ) {
           $self->logger->log_and_croak(
             level   => 'error',
-            message => sprintf 'repo; %s param: %s value: %s is not supported', $repo, $param, $self->config->{repo}->{$repo}->{$param},
+            message => sprintf "repo; %s param: %s value: %s is not supported\n", $repo, $param, $self->config->{repo}->{$repo}->{$param},
           );
         }
+        next
       }
     }
   }
+
+  # do this once, and keep it hanging around as useful sideeffect
+  @repos = sort keys %{$self->config->{'repo'}};
+
+  return 1
 }
 
 sub _get_plugin {
@@ -170,7 +188,7 @@ sub _get_plugin {
   )->plugins(%{$o{'options'}}) ) {
     $plugin = $p if $p->type() eq $o{'type'};
   }
-  $self->logger->log_and_croak(level => 'error', message => "Failed to find a plugin for type: $o{'type'}") unless $plugin;
+  $self->logger->log_and_croak(level => 'error', message => "Failed to find a plugin for type: $o{'type'}\n") unless $plugin;
   return $plugin;
 }
 
@@ -194,7 +212,7 @@ sub _get_repo_dir {
     return File::Spec->catdir($data_dir, $local, $tag);
   }
   else {
-    $self->logger->log_and_croak(level => 'error', message => '_get_repo_dir: Unknown tag_style: '.$tag_style);
+    $self->logger->log_and_croak(level => 'error', message => '_get_repo_dir: Unknown tag_style: '.$tag_style."\n");
   }
 }
 
@@ -233,7 +251,7 @@ sub add_file {
   my %o = validate(
     @_,
     {
-      'repo'      => { type => SCALAR },
+      'repo'      => { type => SCALAR, callbacks => \%check_repo },
       'arch'      => { type => SCALAR },
       'file'      => { type => SCALAR | ARRAYREF },
       'force'     => { type => BOOLEAN, default => 0 },
@@ -285,7 +303,7 @@ sub del_file {
   my %o = validate(
     @_,
     {
-      'repo'      => { type => SCALAR },
+      'repo'      => { type => SCALAR, callbacks => \%check_repo },
       'arch'      => { type => SCALAR },
       'file'      => { type => SCALAR | ARRAYREF },
     },
@@ -331,7 +349,7 @@ If this boolean is enabled then use the repo parameter as a regex to match repos
 sub clean {
   my $self = shift;
   my %o = validate(@_, {
-    repo  => { type => SCALAR, },
+    repo  => { type => SCALAR, callbacks => \%check_repo },
     arch  => { type => SCALAR, optional => 1 },
     regex => { type => BOOLEAN, optional => 1 },
     force => { type => BOOLEAN, optional => 1, },
@@ -340,7 +358,7 @@ sub clean {
   if ($o{'regex'}) {
     my %options = %o;
     my $regex = qr#$o{'repo'}#;
-    for my $repo (sort keys %{$self->config->{'repo'}}) {
+    for my $repo (@repos) {
       if ($repo =~ $regex) {
         $options{'repo'} = $repo;
         $self->_clean(%options);
@@ -351,7 +369,7 @@ sub clean {
   # handle the 'all' special case
   if ($o{'repo'} eq 'all') {
     my %options = %o;
-    for my $repo (sort keys %{$self->config->{'repo'}}) {
+    for my $repo (@repos) {
       $options{'repo'} = $repo;
       $self->_clean(%options);
     }
@@ -404,12 +422,13 @@ Rather than initialising all arches configured, just do this one
 sub init {
   my $self = shift;
   my %o = validate(@_, {
-    repo => { type => SCALAR, },
+    repo => { type => SCALAR, callbacks => \%check_repo },
     arch => { type => SCALAR, optional => 1 },
   });
 
   my $repo_config = $self->config->{'repo'}->{$o{'repo'}};
 
+  # FIXME plugins themselves should decide if they can be init'd
   # Initialising a mirrored repo will result in different manifests to what the mirror has
   if ($repo_config->{'url'}) {
     $self->logger->log_and_croak(
@@ -445,7 +464,7 @@ sub list {
   my $self = shift;
   print "Repository list:\n";
   print sprintf "|%8s|%8s|%50s|\n", 'Type', 'Mirrored', 'Name';
-  for my $repo (sort keys %{$self->config->{repo}}) {
+  for my $repo (@repos) {
     my $type     = $self->config->{repo}->{$repo}->{type};
     my $mirrored = $self->config->{repo}->{$repo}->{url} ? 'Yes' : 'No';
     print sprintf "|%8s|%8s|%50s|\n", $type, $mirrored, $repo;
@@ -484,7 +503,7 @@ If this boolean is enabled then use the repo parameter as a regex to match repos
 sub mirror {
   my $self = shift;
   my %o = validate(@_, {
-    'repo'      => { type => SCALAR },
+    'repo'      => { type => SCALAR,  callbacks => \%check_repo },
     'force'     => { type => BOOLEAN, default => 0 },
     'arch'      => { type => SCALAR,  optional => 1 },
     'checksums' => { type => SCALAR,  optional => 1 },
@@ -494,7 +513,7 @@ sub mirror {
   if ($o{'regex'}) {
     my %options = %o;
     my $regex = qr#$o{'repo'}#;
-    for my $repo (sort keys %{$self->config->{'repo'}}) {
+    for my $repo (@repos) {
       if ($repo =~ $regex) {
         $options{'repo'} = $repo;
         $self->_mirror(%options);
@@ -505,7 +524,7 @@ sub mirror {
   # handle the 'all' special case
   if ($o{'repo'} eq 'all') {
     my %options = %o;
-    for my $repo (sort keys %{$self->config->{'repo'}}) {
+    for my $repo (@repos) {
       $options{'repo'} = $repo;
       $self->_mirror(%options);
     }
@@ -579,7 +598,7 @@ sub tag {
   my %o = validate(
     @_,
     {
-      'repo'    => { type => SCALAR },
+      'repo'    => { type => SCALAR, callbacks => \%check_repo },
       'tag'     => { type => SCALAR },
       'src-tag' => { type => SCALAR,  default => 'head' },
       'symlink' => { type => BOOLEAN, default => 0 },
