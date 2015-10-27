@@ -31,6 +31,7 @@ GetOptions(
   'tag=s'     => \$app_options->{'tag'},
   'src-tag=s' => \$app_options->{'src-tag'},
   'symlink'   => \$app_options->{'symlink'},
+  'regex'     => \$app_options->{'regex'},
   # Script options
   'config-file=s' => \$config_file,
   'log-level=s'   => \$log_level,
@@ -60,24 +61,32 @@ $config->{screen_level}   ||= 'notice';
 $config->{screen_level} = $log_level if $log_level;
 
 # Setup Logging
-my $log_outputs = [
-  [ 'Screen', 'min_level' => $config->{screen_level}, stderr => 0, newline => 1, ],
-];
-push @{$log_outputs}, [
+my @log_outputs = (
+  [
+    'Screen',
+    'min_level' => $config->{screen_level},
+    stderr      => 0,
+    newline     => 1,
+  ],
+);
+
+push @log_outputs, [
   'File',
   'min_level' => $config->{log_file_level},
   'filename'  => $config->{log_file},
   'newline'   => 1,
   'mode'      => '>>',
 ] if $config->{log_file};
-my $logger = Log::Dispatch->new(outputs => $log_outputs);
+
+my $logger = Log::Dispatch->new(outputs => \@log_outputs);
 $logger->debug('logging initialized.');
 
 my $a = App::Repositorio->new(config => $config, logger => $logger);
 my $action = delete $app_options->{'action'};
 # Params::Validate does not like undef which GetOptions will fill with options
 for my $param (keys %{$app_options}) {
-  delete $app_options->{$param} unless defined $app_options->{$param};
+  delete $app_options->{$param}
+      unless defined $app_options->{$param};
 }
 $a->go($action, $app_options) unless caller();
 
