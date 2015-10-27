@@ -313,6 +313,7 @@ sub mirror {
     repo      => { type => SCALAR, },
     checksums => { type => BOOLEAN, optional => 1, },
     force     => { type => BOOLEAN, optional => 1, },
+    regex     => { type => BOOLEAN, optional => 1, },
   });
 
   my $options = {
