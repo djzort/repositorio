@@ -174,7 +174,7 @@ Stay tuned for more!
 
 =head1 CONFIGURATION
 
-=item Global Options
+=head2 Global Options
 
 =over 4
 
@@ -221,7 +221,7 @@ Defaults to 'notice'
 
 =back
 
-=item Global and/or repository
+=head2 Global and/or repository
 
 =over 4
 
@@ -230,8 +230,6 @@ Defaults to 'notice'
 This option will use the repository config value if present otherwise the global value if present eg:
 
   hard_tag_regex = ^release_\d{8}$
-
-=back
 
 =item B<Repository Config>
 
@@ -270,6 +268,8 @@ An optional cert file used when mirroring from upstream https (ie like Redhats c
 =item key
 
 An optional cert key file used when mirroring from upstream https (ie like Redhats cdn network)
+
+=back
 
 =back
 
