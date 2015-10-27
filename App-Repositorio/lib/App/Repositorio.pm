@@ -345,7 +345,7 @@ sub clean {
   if ($o{'regex'}) {
     my %options = %o;
     my $regex = qr#$o{'repo'}#;
-    for my $repo (keys %{$self->config->{'repo'}}) {
+    for my $repo (sort keys %{$self->config->{'repo'}}) {
       if ($repo =~ $regex) {
         $options{'repo'} = $repo;
         $self->_clean(%options);
@@ -510,7 +510,7 @@ sub mirror {
   # handle the 'all' special case
   if ($o{'repo'} eq 'all') {
     my %options = %o;
-    for my $repo (keys %{$self->config->{'repo'}}) {
+    for my $repo (sort keys %{$self->config->{'repo'}}) {
       $options{'repo'} = $repo;
       $self->_mirror(%options);
     }
