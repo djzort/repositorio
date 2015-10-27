@@ -1,3 +1,4 @@
+#!/bin/false
 package App::Repositorio::Plugin::Base;
 
 # PODNAME: App::Repositorio::Plugin::Base
@@ -7,13 +8,15 @@ use Moo::Role;
 use strictures 2;
 use namespace::clean;
 
+use App::Repositorio::Logger;
 use Carp;
 use Data::Dumper;
 use Digest::SHA;
 use File::Find qw(find);
 use File::Path qw(make_path remove_tree);
 use File::Spec;
-use LWP::UserAgent;
+use HTTP::Tiny;
+use IO::Zlib;
 use Module::Path qw[ module_path ];
 use Module::Runtime qw[ compose_module_name ];
 use Params::Validate qw(:all);
@@ -21,27 +24,27 @@ use Time::HiRes qw(gettimeofday tv_interval);
 
 # VERSION
 
-has logger    => ( is => 'ro', required => 1 );
+has logger    => ( is => 'ro', default => sub {App::Repositorio::Logger->new()} );
 has repo      => ( is => 'ro', required => 1 );
 has dir       => ( is => 'ro', required => 1 );
 has url       => ( is => 'ro', optional => 1 );
 has checksums => ( is => 'ro', optional => 1 );
 has force     => ( is => 'ro', optional => 1 );
 has arches    => ( is => 'ro', required => 1 );
-has ua        => ( is => 'lazy' );
+has http      => ( is => 'lazy' );
 has ssl_ca    => ( is => 'ro', optional => 1 );
 has ssl_cert  => ( is => 'ro', optional => 1 );
 has ssl_key   => ( is => 'ro', optional => 1 );
 
-sub _build_ua {
+sub _build_http {
   my $self = shift;
 
   my %o;
-  $o{ssl_opts}->{'SSL_ca_file'}   = $self->ssl_ca()   if $self->can('ssl_ca');
-  $o{ssl_opts}->{'SSL_cert_file'} = $self->ssl_cert() if $self->can('ssl_cert');
-  $o{ssl_opts}->{'SSL_key_file'}  = $self->ssl_key()  if $self->can('ssl_key');
+  $o{SSL_options}->{'SSL_ca_file'}   = $self->ssl_ca()   if $self->can('ssl_ca');
+  $o{SSL_options}->{'SSL_cert_file'} = $self->ssl_cert() if $self->can('ssl_cert');
+  $o{SSL_options}->{'SSL_key_file'}  = $self->ssl_key()  if $self->can('ssl_key');
 
-  return LWP::UserAgent->new(%o);
+  return HTTP::Tiny->new(%o);
 }
 
 sub get_gzip_contents {
@@ -71,7 +74,7 @@ sub find_command_path {
   my @path = File::Spec->path();
   for my $p (@path) {
     my $command_path = File::Spec->catfile($p, $command);
-    return $command_path if -f $command_path;
+    return $command_path if -x $command_path;
   }
   return;
 }
@@ -118,13 +121,25 @@ sub validate_file {
     value    => { type => SCALAR },
   });
 
+  # If theres no file, its not valid
   return 0 unless -f $o{'filename'};
+  # If force is enabled, its not valid
+  return 0 if $self->force();
 
+  # Check against size
   if ($o{'check'} eq 'size') {
     return $self->_validate_file_size($o{'filename'}, $o{'value'});
   }
+  # Check against sha
+  elsif ($o{'check'} eq 'sha') {
+    return $self->_validate_file_sha($o{'filename'}, $o{'value'});
+  }
+  # Check against sha256
   elsif ($o{'check'} eq 'sha256') {
     return $self->_validate_file_sha256($o{'filename'}, $o{'value'});
+  }
+  else {
+    $self->logger->log_and_croak(level => 'error', message => "unknown validation check type: $o{'check'}");
   }
 }
 
@@ -139,6 +154,15 @@ sub _validate_file_size {
   return $file_size eq $size ? 1 : undef;
 }
 
+sub _validate_file_sha {
+  my $self     = shift;
+  my $file     = shift;
+  my $checksum = shift;
+
+  my $sha = Digest::SHA->new('sha1');
+  $sha->addfile($file);
+  return $sha->hexdigest eq $checksum ? 1 : undef;
+}
 sub _validate_file_sha256 {
   my $self     = shift;
   my $file     = shift;
@@ -153,7 +177,7 @@ sub mirror {
   my $self = shift;
 
   for my $arch (@{$self->arches()}) {
-    $self->logger->info(sprintf('mirror; starting repo: %s arch: %s from url: %s to dir: %s', $self->repo, $arch, $self->url, $self->dir));
+    $self->logger->info(sprintf("mirror: starting repo: %s arch: %s from url: %s to dir: %s", $self->repo, $arch, $self->url, $self->dir));
     my $packages = $self->get_metadata($arch);
     $self->get_packages(arch => $arch, packages => $packages);
   }
@@ -162,7 +186,7 @@ sub mirror {
 sub clean {
   my $self = shift;
 
-  $self->logger->info(sprintf('clean; starting repo: %s in dir: %s', $self->repo, $self->dir));
+  $self->logger->info(sprintf("clean: starting repo: %s in dir: %s", $self->repo, $self->dir));
   for my $arch (@{$self->arches()}) {
     my $files = $self->read_metadata($arch);
     $self->clean_files(arch => $arch, files => $files);
@@ -173,7 +197,7 @@ sub clean {
 sub init {
   my $self = shift;
   my $arch = shift;
-  $self->logger->info(sprintf 'init; repo: %s dir: %s', $self->repo(), $self->dir());
+  $self->logger->info(sprintf 'init: repo: %s dir: %s', $self->repo(), $self->dir());
   if ($arch) {
     $self->init_arch($arch);
   }
@@ -188,14 +212,23 @@ sub init {
 sub tag {
   my $self = shift;
   my %o = validate(@_, {
-    src_tag  => { type => SCALAR },
-    src_dir  => { type => SCALAR },
-    dest_tag => { type => SCALAR },
-    dest_dir => { type => SCALAR },
-    symlink  => { type => BOOLEAN, default => 0 },
+    src_tag        => { type => SCALAR },
+    src_dir        => { type => SCALAR },
+    dest_tag       => { type => SCALAR },
+    dest_dir       => { type => SCALAR },
+    symlink        => { type => BOOLEAN, default => 0 },
+    hard_tag_regex => { type => SCALAR, optional => 1 },
   });
 
   $self->logger->debug(sprintf('tag; repo: %s tagging: %s -> %s', $self->repo(), $o{'src_dir'}, $o{'dest_dir'}));
+
+  # Make sure intended tag matches what we want if present
+  if ($o{'hard_tag_regex'} && ! $o{'symlink'}) {
+    $self->logger->log_and_die(
+      level   => 'error',
+      message => sprintf("tag: repo: %s dest_tag: %s does not match hard_tag_regex: %s", $self->repo(), $o{'dest_tag'}, $o{'hard_tag_regex'}),
+    ) unless $o{'dest_tag'} =~ m#$o{'hard_tag_regex'}#;
+  }
 
   # When src_dir does not exist do not continue
   $self->logger->log_and_die(
@@ -300,13 +333,16 @@ sub download_binary_file {
     )
   );
 
+  # HTTP::Tiny's mirror function does not seem to validate the file if its locally present in any way
+  unlink $o{dest} if -f $o{dest};
+
   my $retry_count = 0;
   my $retry_limit = $o{retry_limit};
   my $success;
 
   while (!$success && $retry_count <= $retry_limit) {
     my $t0 = [gettimeofday];
-    my $res = $self->ua->get($o{'url'}, ':content_file' => $o{'dest'});
+    my $res = $self->http->mirror($o{'url'}, $o{'dest'});
     my $elapsed = tv_interval($t0);
 
     $self->logger->debug(
@@ -318,16 +354,17 @@ sub download_binary_file {
       )
     );
 
-    if ($res->is_success) {
+    if ($res->{'success'}) {
       return 1;
     }
     else {
       $self->logger->debug(
         sprintf(
-          'download_binary_file; repo: %s url: %s failed with status: %s',
+          'download_binary_file; repo: %s url: %s failed with status: %s reason: %s',
           $self->repo(),
           $o{url},
-          $res->status_line,
+          $res->{'status'},
+          $res->{'reason'},
         )
       );
       $retry_count++;

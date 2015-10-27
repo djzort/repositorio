@@ -1,3 +1,4 @@
+#!/bin/false
 package App::Repositorio::Plugin::Yum;
 
 # PODNAME: App::Repositorio::Plugin::Yum
@@ -7,13 +8,15 @@ use Moo;
 use strictures 2;
 
 use Carp;
-use IO::Zlib;
 use File::Copy qw(copy);
 use File::Find qw(find);
 use File::Basename qw(basename dirname);
+use IO::Zlib;
 use Params::Validate qw(:all);
 use Data::Dumper qw(Dumper);
+use Time::HiRes qw(gettimeofday tv_interval);
 use XML::Twig;
+use XML::LibXML;
 
 # VERSION
 
@@ -41,8 +44,26 @@ sub get_metadata {
     # Make sure dir exists
     $self->make_dir($dest_dir);
 
+    # Check if we have the local file
+    my $download;
+    if ($type eq 'repomd') {
+      $download++;
+    }
+    elsif (! $self->validate_file(
+        filename => $dest_file,
+        check    => $m->{'validate'}->{'type'},
+        value    => $m->{'validate'}->{'value'},
+      )) {
+      $download++;
+    }
+
     # Grab the file
-    $self->download_binary_file(url => $m_url, dest => $dest_file);
+    if ($download) {
+      $self->download_binary_file(url => $m_url, dest => $dest_file);
+    }
+    else {
+      $self->logger->debug(sprintf('get_metadata; repo: %s arch: %s file: %s skipping as its deemed up to date', $self->repo(), $arch, $location));
+    }
 
     # Parse the xml and retrieve the primary file location
     if ($type eq 'repomd') {
@@ -52,8 +73,7 @@ sub get_metadata {
 
     # Parse the primary metadata file
     if ($type eq 'primary') {
-      my $contents = $self->get_gzip_contents($dest_file);
-      $packages = $self->parse_primary($contents);
+      $packages = $self->parse_primary($dest_file);
     }
   }
   return $packages;
@@ -85,7 +105,7 @@ sub read_metadata {
       # Parse the primary metadata file
       if ($type eq 'primary') {
         my $contents = $self->get_gzip_contents($dest_file);
-        for my $file (@{$self->parse_primary($contents)}) {
+        for my $file (@{$self->parse_primary($dest_file)}) {
           $files->{$file->{'location'}}++;
         }
       }
@@ -98,6 +118,7 @@ sub parse_repomd {
   my $self = shift;
   my $file = shift;
 
+  # XXX TODO rework this with XML::LibXML as its far faster
   my $twig = XML::Twig->new(TwigRoots => {data => 1});
   $twig->parsefile($file);
 
@@ -112,11 +133,24 @@ sub parse_repomd {
         $data->{'location'} = $c->att('href');
       }
       elsif ($c->name eq 'checksum') {
-        $data->{'checksum'} = $c->att('type');
+        $data->{'checksum'}->{'type'} = $c->att('type');
+        $data->{'checksum'}->{'value'} = $c->text;
       }
       elsif ($c->name eq 'size'){
-        $data->{'size'} = $c->text;
+        $data->{'size'}->{'type'}  = 'size';
+        $data->{'size'}->{'value'} = $c->text;
       }
+    }
+
+    # For some reason i have found a few repomd.xml files that do NOT
+    # have a size attribute ...specifically updateinfo type
+    # so as a work around we will try size if checksums is not enabled
+    # however for that file we'll revert to checksums if size is not available
+    if (! $self->checksums() && $data->{'size'}) {
+      $data->{'validate'} = $data->{'size'};
+    }
+    else {
+      $data->{'validate'} = $data->{'checksum'};
     }
     $self->logger->log_and_croak(level => 'error', message => "repomd xml not valid: $file") unless $data->{'location'};
     push @files, $data;
@@ -124,36 +158,44 @@ sub parse_repomd {
 
   return \@files;
 }
+
 sub parse_primary {
   my $self = shift;
-  my $xml  = shift;
-
+  my $dest_file  = shift;
+  my $io_fh = IO::Zlib->new($dest_file, 'rb');
+  my $xml = XML::LibXML->load_xml( IO => $io_fh );
+  my $t0 = [gettimeofday];
   my $packages = [];
-  my $twig = XML::Twig->new(TwigRoots => {package => 1});
-  $twig->parse($xml);
-  my $root = $twig->root;
-  my @e = $root->children();
-  for my $e (@e) {
-    my $data = {};
-    for my $c ($e->children()) {
-      if ($c->name eq 'location') {
-        $data->{'location'} = $c->att('href');
-      }
-      elsif ($c->name eq 'name') {
-        $data->{'name'} = $c->text;
-      }
-      elsif ($c->name eq 'checksum') {
-        $data->{'checksum'}->{'type'} = $c->att('type');
-        $data->{'checksum'}->{'value'} = $c->text;
-      }
-      elsif ($c->name eq 'size'){
-        $data->{'size'} = $c->att('package');
-      }
+  for my $p ($xml->getElementsByTagName('package')) {
+    my ($n) = $p->getChildrenByTagName('name');
+    my ($l) = $p->getChildrenByTagName('location');
+    my ($s) = $p->getChildrenByTagName('size');
+    my ($c) = $p->getChildrenByTagName('checksum');
+    my $data = {
+      name     => $n->textContent,
+      location => $l->getAttribute('href'),
+      size     => {
+        type  => 'size',
+        value => $s->getAttribute('package'),
+      },
+      checksum => {
+        type  => $c->getAttribute('type'),
+        value => $c->textContent,
+      },
+    };
+    if (! $self->checksums() && $data->{'size'}) {
+      $data->{'validate'} = $data->{'size'};
+    }
+    else {
+      $data->{'validate'} = $data->{'checksum'};
     }
     push @{$packages}, $data;
   }
+  my $elapsed = tv_interval($t0);
+  $self->logger->debug(sprintf('parse_primary: file: %s took: %s seconds', $dest_file, $elapsed));
   return $packages;
 }
+
 sub get_packages {
   my $self = shift;
   my %o = validate(@_, {
@@ -166,9 +208,7 @@ sub get_packages {
 
   for my $package (@{$o{'packages'}}) {
     my $name     = $package->{'name'};
-    my $size     = $package->{'size'};
     my $location = $package->{'location'};
-    my $checksum = $package->{'checksum'};
 
     my $p_url     = join('/', ($self->url, $location));
     $p_url        =~ s/%ARCH%/$arch/;
@@ -179,24 +219,16 @@ sub get_packages {
     $self->make_dir($dest_dir);
 
     # Check if we have the local file
-    my $download;
-    if ($self->force) {
-      $download++;
-    }
-    elsif ($self->checksums) {
-      $download++ unless $self->validate_file(filename => $dest_file, check => $checksum->{'type'}, value => $checksum->{'value'});
-    }
-    else {
-      $download++ unless $self->validate_file(filename => $dest_file, check => 'size', value => $size);
-    }
-
-    # Grab the file
-    if ($download) {
-      $self->logger->notice(sprintf('get_packages; repo: %s arch: %s package: %s', $self->repo(), $arch, $name));
+    if (! $self->validate_file(
+        filename => $dest_file,
+        check    => $package->{'validate'}->{'type'},
+        value    => $package->{'validate'}->{'value'},
+      )) {
+      $self->logger->notice(sprintf('get_packages; repo: %s arch: %s package: %s', $self->repo(), $arch, $location));
       $self->download_binary_file(url => $p_url, dest => $dest_file);
     }
     else {
-      $self->logger->debug(sprintf('get_packages; repo: %s arch: %s package: %s skipping as its deemed up to date', $self->repo(), $arch, $name));
+      $self->logger->debug(sprintf('get_packages; repo: %s arch: %s package: %s skipping as its deemed up to date', $self->repo(), $arch, $location));
     }
   }
 }
@@ -238,9 +270,12 @@ sub add_file {
     $self->logger->log_and_croak(level => 'error', message => sprintf 'add_file: arch: %s is not in config for repo: %s', $arch, $self->repo());
   }
 
+  my $package_dir = File::Spec->catdir($self->dir(), $arch, $self->packages_dir());
+  $self->make_dir($package_dir) unless -d $package_dir;
+
   for my $file (@${files}) {
     my $filename = basename($file);
-    my $dest_file = File::Spec->catfile($self->dir(), $arch, $self->packages_dir(), $filename);
+    my $dest_file = File::Spec->catfile($self->dir(), $arch, $package_dir, $filename);
     $self->logger->debug(sprintf 'add_file; repo: %s arch: %s file: %s dest_file: %s', $self->repo(), $arch, $file, $dest_file);
 
     if (-f $dest_file && ! $self->force()) {

@@ -1,3 +1,4 @@
+#!/bin/false
 package App::Repositorio;
 # PODNAME: App::Repositorio
 # ABSTRACT: The core part of repositorio
@@ -11,133 +12,138 @@ use Data::Dumper;
 use Params::Validate qw(:all);
 use Module::Pluggable::Object;
 use File::Spec;
+use App::Repositorio::Logger;
+
+
 
 # VERSION
 
 
 has config => ( is => 'ro' );
-has logger => ( is => 'ro' );
+has logger => ( is => 'ro', default => sub {App::Repositorio::Logger->new()} );
+
+=head1 DESCRIPTION
+
+App::Repositorio - An application to handle management of various software repositories
+This module is purely to designed to be used with the accompanying script bin/rpio
+Please look at its pod for instantiating of this Module
+
+=head2 SYNOPSIS
+
+  my $o = App::Repositorio->new(
+    config => $hashref,
+    logger => Log::Dispatch->new()
+  );
+
+  $o->go($action, %options);
+
+=head2 METHODS
+
+=over 4
+
+=cut
+
+=item B<go()>
+
+Perform the supplied action with options
+
+Valid actions:
+
+=over 4
+
+=item B<add-file>
+
+Used to add file/s to a local repository see  L</"add_file()">
+
+=item B<del-file>
+
+Used to delete file/s from a local repository see L</"del_file()">
+
+=item B<clean>
+
+Used to clean a repository of no longer referenced files eg: no longer reference package versions or manifest files see L</"clean()"> 
+
+=item B<init>
+
+Used to initialise manifests for a local repository see L<"init()">
+
+=item B<list>
+
+Used to list configured repositories see L<"list()">
+
+=item B<mirror>
+
+Used to update a repository from its configured mirror see L<"mirror()">
+
+=item B<tag>
+
+Tag a repository state see L<"tag()">
+
+=back
+
+=cut
 
 sub go {
-  my $self = shift;
-  my $action = shift;
-  my @o = @_;
-  my %options;
+  my ($self, $action, @args) = @_;
   $self->_validate_config();
 
-  $self->logger->log_and_croak(level => 'error', message => 'ERROR: action not supplied.') unless $action;
-
-  my %actions;
-
-  $actions{'add-file'} = sub { $self->add_file(@o) };
-  $actions{'del-file'} = sub { $self->del_file(@o) };
-  $actions{'clean'} = sub {
-    %options = validate(
-      @o,
-      {
-        'repo' => { type => SCALAR },
-        'arch' => { type => SCALAR, optional => 1 },
-      },
-    );
-    if ($options{'repo'} eq 'all') {
-      my %o = %options;
-      for my $repo (keys %{$self->config->{'repo'}}) {
-        $o{'repo'} = $repo;
-        $self->clean(%o);
-      }
-    }
-    else {
-      $self->clean(%options);
-    }
-  };
-  $actions{'init'} = sub { $self->init(@o) };
-  $actions{'list'} = sub { $self->list() };
-  $actions{'mirror'} = sub {
-    %options = validate(
-      @o,
-      {
-        'repo'      => { type => SCALAR },
-        'force'     => { type => BOOLEAN, default  => 0 },
-        'regex'     => { type => BOOLEAN, default  => 0 },
-        'arch'      => { type => SCALAR,  optional => 1 },
-        'checksums' => { type => SCALAR,  optional => 1},
-      },
-    );
-    # treat the 'repo' as a regex
-    if ($options{'regex'}) {
-      my %o = %options;
-      my $regex = qr/$options{'repo'}/;
-      for my $repo (sort keys %{$self->config->{'repo'}}) {
-        next unless $repo =~ $regex;
-        $o{'repo'} = $repo;
-        $self->mirror(%o);
-        return 1
-      }
-    }
-    # 'all' is special case
-    if ($options{'repo'} eq 'all') {
-      my %o = %options;
-      for my $repo (sort keys %{$self->config->{'repo'}}) {
-        $o{'repo'} = $repo;
-        $self->mirror(%o);
-        return 1
-      }
-    }
-    # fall back
-    return $self->mirror(%options);
-  };
-  $actions{'tag'} = sub {
-    %options = validate(
-      @o,
-      {
-        'repo'    => { type => SCALAR },
-        'tag'     => { type => SCALAR },
-        'src-tag' => { type => SCALAR,  default => 'head' },
-        'symlink' => { type => BOOLEAN, default => 0 },
-        'force'   => { type => BOOLEAN, default => 0 },
-      },
-    );
-    $self->tag(%options);
+  my $dispatch = {
+    'add-file' => \&add_file,
+    'del-file' => \&del_file,
+    'clean'    => \&clean,
+    'init'     => \&init,
+    'list'     => \&list,
+    'mirror'   => \&mirror,
+    'tag'      => \&tag,
   };
 
-  if ($actions{$action}) {
-      $actions{$action}->();
-  }
-  else {
+  exists $dispatch->{$action} ||
     $self->logger->log_and_croak(level => 'error', message => "ERROR: ${action} not supported.");
-  }
+
+  $dispatch->{$action}->($self, @args);
+
   exit(0);
 }
+
 sub _validate_config {
   my $self = shift;
 
   # If data_dir is relative, lets expand it based on cwd
   $self->config->{'data_dir'} = File::Spec->rel2abs($self->config->{data_dir});
 
+  # Make sure data_dir exists
   $self->logger->log_and_croak(
     level   => 'error',
     message => sprintf "datadir does not exist: %s", $self->config->{data_dir},
   ) unless -d $self->config->{data_dir};
 
+  # Ensure tag style option is valid
   $self->logger->log_and_croak(
     level   => 'error',
     message => sprintf "Unknown tag_style %s, must be topdir or bottomdir\n", $self->config->{tag_style},
   ) unless $self->config->{tag_style} =~ m/^(?:top|bottom)dir$/;
 
-  # required params for reposrc-tag
+  # required params for each repo config
   for my $repo (sort keys %{$self->config->{'repo'}}) {
+
+    #type local and arch are required params for ALL repos
     for my $param (qw/type local arch/) {
       $self->logger->log_and_croak(
         level   => 'error',
         message => sprintf "repo: %s missing param: %s", $repo, $param,
       ) unless $self->config->{repo}->{$repo}->{$param};
-      # Data validation for specific type
+
+      # Data validation for specific types
+
+      # Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
       if ($param eq 'arch') {
         # We allow identical options which we use for arch, lets end up with an array regardless
         my $arch = $self->config->{'repo'}->{$repo}->{'arch'};
         my $arches = ref($arch) eq 'ARRAY' ? $arch : [$arch];
         $self->config->{'repo'}->{$repo}->{'arch'} = $arches;
       }
+
+      # Allowed types
       elsif ($param eq 'type') {
         unless (
           $self->config->{repo}->{$repo}->{$param} eq 'Yum' ||
@@ -197,6 +203,36 @@ sub _get_repo_dir {
   }
 }
 
+=item B<add_file()>
+
+Action: add-file
+
+Description: Adds a file to a local repository and updates the related metadata
+
+Options:
+
+=over 4
+
+=item repo
+
+The name of the repository as reflected in the config
+
+=item arch
+
+The arch this package should be added to as reflected in the config
+
+=item file
+
+The path of the file to be added to the repository
+
+=item force
+
+Boolean to enable force overwriting an existing file in the repository
+
+=back
+
+=cut
+
 sub add_file {
   my $self = shift;
   my %o = validate(
@@ -209,7 +245,6 @@ sub add_file {
     },
   );
   my $options = {
-    logger    => $self->logger(),
     repo      => $o{'repo'},
     arches    => $self->config->{'repo'}->{$o{'repo'}}->{'arch'},
     backend   => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
@@ -224,6 +259,32 @@ sub add_file {
   $plugin->add_file($o{'arch'}, $o{'file'});
 }
 
+=item B<del_file()>
+
+Action: del-file
+
+Description: Removes a file to a local repository and updates the related metadata
+
+Options:
+
+=over 4
+
+=item repo
+
+The name of the repository as reflected in the config
+
+=item arch
+
+The arch this package should be removed from as reflected in the config
+
+=item file
+
+The filename to be removed to the repository
+
+=back
+
+=cut
+
 sub del_file {
   my $self = shift;
   my %o = validate(
@@ -235,7 +296,6 @@ sub del_file {
     },
   );
   my $options = {
-    logger    => $self->logger(),
     repo      => $o{'repo'},
     arches    => $self->config->{'repo'}->{$o{'repo'}}->{'arch'},
     backend   => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
@@ -250,15 +310,63 @@ sub del_file {
   $plugin->del_file($o{'arch'}, $o{'file'});
 }
 
+=item B<clean()>
+
+Action: clean
+
+Description: Removes files from a repository that are not referenced in the metadata
+
+Options:
+
+=over 4
+
+=item repo
+
+The name of the repository as reflected in the config
+If 'all' is supplied it will perform this action on all repositories in config
+
+=item regex
+
+If this boolean is enabled then use the repo parameter as a regex to match repositories against
+
+=back
+
+=cut
+
 sub clean {
   my $self = shift;
   my %o = validate(@_, {
-    repo      => { type => SCALAR, },
-    force     => { type => BOOLEAN, optional => 1, },
+    repo  => { type => SCALAR, },
+    arch  => { type => SCALAR, optional => 1 },
+    regex => { type => BOOLEAN, optional => 1 },
+    force => { type => BOOLEAN, optional => 1, },
   });
 
+  if ($o{'repo'} eq 'all') {
+    my %options = %o;
+    for my $repo (keys %{$self->config->{'repo'}}) {
+      $options{'repo'} = $repo;
+      $self->_clean(%options);
+    }
+  }
+  elsif ($o{'regex'}) {
+    my %options = %o;
+    for my $repo (keys %{$self->config->{'repo'}}) {
+      if ($repo =~ m#$o{'repo'}#) {
+        $options{'repo'} = $repo;
+        $self->_clean(%options);
+      }
+    }
+  }
+  else {
+    $self->_clean(%o);
+  }
+}
+
+sub _clean {
+  my ($self, %o) = @_;
+
   my $options = {
-    logger    => $self->logger(),
     repo      => $o{'repo'},
     arches    => $self->config->{'repo'}->{$o{'repo'}}->{'arch'},
     backend   => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
@@ -273,6 +381,28 @@ sub clean {
   $plugin->clean();
 }
 
+=item B<init()>
+
+Action: init
+
+Description: Initialises a custom repository by generating the appropriate metadata files
+
+Options:
+
+=over 4
+
+=item repo
+
+The name of the repository as reflected in the config
+
+=item arch
+
+Rather than initialising all arches configured, just do this one
+
+=back
+
+=cut
+
 sub init {
   my $self = shift;
   my %o = validate(@_, {
@@ -280,21 +410,38 @@ sub init {
     arch => { type => SCALAR, optional => 1 },
   });
 
+  my $repo_config = $self->config->{'repo'}->{$o{'repo'}};
+
+  # Initialising a mirrored repo will result in different manifests to what the mirror has
+  if ($repo_config->{'url'}) {
+    $self->logger->log_and_croak(
+      level => 'error',
+      message => 'init: this is action is only valid for local repositories...this repo has a url specified',
+    );
+  }
+
   my $options = {
-    logger    => $self->logger(),
     repo      => $o{'repo'},
-    arches    => $self->config->{'repo'}->{$o{'repo'}}->{'arch'},
-    backend   => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
+    arches    => $repo_config->{'arch'},
+    backend   => $repo_config->{'type'},
     dir       => $self->_get_repo_dir(repo => $o{'repo'}),
   };
 
   my $plugin = $self->_get_plugin(
-    type    => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
+    type    => $repo_config->{'type'},
     options => $options,
   );
 
   $plugin->init($o{'arch'});
 }
+
+=item B<list()>
+
+Action: list
+
+Description: Lists the repositories as reflected in the config
+
+=cut
 
 sub list {
   my $self = shift;
@@ -307,17 +454,70 @@ sub list {
   }
 }
 
+=item B<mirror()>
+
+Action: mirror
+
+Description: Mirrors repository from upstream provider into the head tag
+
+Options:
+
+=over 4
+
+=item repo
+
+The name of the repository as reflected in the config
+If 'all' is supplied it will perform this action on all repositories in config
+
+=item checksums
+
+By default we just use the manifests information about size of packages to determine if the local file
+is valid. If you want to have checksums used enable this boolean flag.
+With this enabled updating a mirror can take quite a long time
+
+=item regex
+
+If this boolean is enabled then use the repo parameter as a regex to match repositories against
+
+=back
+
+=cut
+
 sub mirror {
   my $self = shift;
   my %o = validate(@_, {
-    repo      => { type => SCALAR, },
-    checksums => { type => BOOLEAN, optional => 1, },
-    force     => { type => BOOLEAN, optional => 1, },
-    regex     => { type => BOOLEAN, optional => 1, },
+    'repo'      => { type => SCALAR },
+    'force'     => { type => BOOLEAN, default => 0 },
+    'arch'      => { type => SCALAR,  optional => 1 },
+    'checksums' => { type => SCALAR,  optional => 1 },
+    'regex'     => { type => BOOLEAN, optional => 1 },
   });
 
+  if ($o{'repo'} eq 'all') {
+    my %options = %o;
+    for my $repo (keys %{$self->config->{'repo'}}) {
+      $options{'repo'} = $repo;
+      $self->_mirror(%options);
+    }
+  }
+  elsif ($o{'regex'}) {
+    my %options = %o;
+    for my $repo (keys %{$self->config->{'repo'}}) {
+      if ($repo =~ m#$o{'repo'}#) {
+        $options{'repo'} = $repo;
+        $self->_mirror(%options);
+      }
+    }
+  }
+  else {
+    $self->_mirror(%o);
+  }
+}
+
+sub _mirror {
+  my ($self, %o) = @_;
+
   my $options = {
-    logger    => $self->logger(),
     repo      => $o{'repo'},
     arches    => $self->config->{'repo'}->{$o{'repo'}}->{'arch'},
     url       => $self->config->{'repo'}->{$o{'repo'}}->{'url'},
@@ -336,11 +536,57 @@ sub mirror {
   $plugin->mirror();
 }
 
+=item B<tag()>
+
+Action: tag
+
+Description: Tags a repository at a particular state
+
+Options:
+
+=over 4
+
+=item repo
+
+The name of the repository as reflected in the config
+
+=item src-tag
+
+The source tag to use for this operation, by default this is 'head'
+The source tag must pre exist.
+
+=item dest-tag
+
+The destination tag to use for this operation.
+
+=item symlink
+
+This will make the link operation use a symlink instead of hardlinking
+For example you may tag every time you update from upstream but you move a production tag around...provides easy roll back
+for your clients package configuration
+
+=item force
+
+Force will overwrite a pre existing dest-tag location
+
+=back
+
+=cut
+
 sub tag {
   my $self = shift;
-  my %o = @_;
+  my %o = validate(
+    @_,
+    {
+      'repo'    => { type => SCALAR },
+      'tag'     => { type => SCALAR },
+      'src-tag' => { type => SCALAR,  default => 'head' },
+      'symlink' => { type => BOOLEAN, default => 0 },
+      'force'   => { type => BOOLEAN, default => 0 },
+    },
+  );
+
   my $options = {
-    logger    => $self->logger(),
     repo      => $o{'repo'},
     arches    => $self->config->{'repo'}->{$o{'repo'}}->{'arch'},
     backend   => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
@@ -354,17 +600,20 @@ sub tag {
   );
 
   $plugin->tag(
-    src_dir  => $self->_get_repo_dir(repo => $o{'repo'}, tag => $o{'src-tag'}),
-    src_tag  => $o{'src-tag'},
-    dest_dir => $self->_get_repo_dir(repo => $o{'repo'}, tag => $o{'tag'}),
-    dest_tag => $o{'tag'},
-    symlink  => $o{'symlink'},
+    src_dir        => $self->_get_repo_dir(repo => $o{'repo'}, tag => $o{'src-tag'}),
+    src_tag        => $o{'src-tag'},
+    dest_dir       => $self->_get_repo_dir(repo => $o{'repo'}, tag => $o{'tag'}),
+    dest_tag       => $o{'tag'},
+    symlink        => $o{'symlink'},
+    hard_tag_regex => $self->config->{'repo'}->{'hard_tag_regex'} || $self->config->{'hard_tag_regex'},
   );
 }
 
-
-
 1;
+
+=back
+
+=cut
 
 __END__
 

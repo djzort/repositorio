@@ -1,36 +1,149 @@
 NAME
-    rpio - Repositorio Repository Management
+    nrepo - Repository Management
+
+DESCRIPTION
+    Repositorio is designed to be an extensible repository management system
+    Currently it provides a basic framework and support for Yum based
+    repositories. Stay tuned for more!
 
 SYNOPSIS
-    rpio --action X [options]
+      nrepo --action X [options]
 
-     #XXX update these
-     Actions:
-       mirror    Mirror a configured repository (requires --repo, use 'all' for all configured repositories)
-       tag       Tag a repository (requires --repo)
-       list      List all configured repositories
-       init      Initialise a custom repository (requires --repo)
-       add-file  Add files to a custom repository (requires --repo)
-       del-file  Remove files from a custom repository (requires --repo)
+      See perldoc App::Repositorio for all valid actions and their in depth descriptions
 
-     Options:
-       --repo           The name of the repo for your action
-       --regex          When mirroring, use the 'repo' option as a regular expression matching repo names
-       --checksums      When mirroring, use checksums for downloaded packages rather than size
-       --log-level      Change the stdout log level (overrides config)
-       --help           This helpful message
+      Actions:
+        list      List all configured repositories
+        mirror    Mirror a repository
+          requires:
+            --repo (all|$regex|$repository_name)
+          optional:
+            --checksums
+            --regex (uses --repo value as a regex)
+        tag       Tag a repository
+          requires:
+            --repo $repository_name
+            --tag  $destination_tag
+          optional:
+            --src-tag $src_tag (defaults to 'head')
+            --symlink (default false)
+        clean     Cleans a repository of unreferenced files
+          requires:
+            --repo (all|$regex|$repository_name)
+          optional:
+            --regex (uses --repo value as a regex)
+        init      Initialise a custom repository
+          requires:
+            --repo $repository_name
+        add-file  Add files to a custom repository
+          requires:
+            --repo $repository_name
+            --arch $arch
+            --file $path_to_file (--file can be supplied multiple times)
+        del-file  Remove files from a custom repository
+          requires:
+            --repo $repository_name
+            --arch $arch
+            --file $path_to_file (--file can be supplied multiple times)
+ 
+      Script Options:
+        --config-file    Path to config-file, defaults to ./conf/nrepo.conf
+        --log-level      Change the stdout log level (overrides config)
+        --help           This helpful message
 
-Examples
-      rpio --action mirror --repo centos-6-epel
-      rpio --action tag --repo centos-6-epel --tag release_20150827
-      rpio --action tag --repo centos-6-epel --src-tag release_20150827 --symlink --tag production
+EXAMPLES
+      # Working with mirrored repos:
 
-    This will:
+      # Update the repository from upstream to current
+      nrepo --action mirror --repo centos-6-epel
+      # Tag the newly updated packages/manifests with a hard tag
+      nrepo --action tag --repo centos-6-epel --tag release_20150827
+      # Tag the hard tag with a soft tag that your clients reference
+      nrepo --action tag --repo centos-6-epel --src-tag release_20150827 --symlink --tag production
 
-    1. update centos-6-epel to the current upstream version
-    2. create a hardlink copy of head to release_20150827
-    3. create a symlink of release_20150827 to production
+      # Working with local repos:
 
-AUTHORS
-    *   Brendan Beveridge <brendan@nodeintegration.com.au>
-    *   Dean Hamstead <dean@bytefoundry.com.au>
+      # Add some packages:
+      nrepo --action add-file --repo centos-6-custom --arch x86_64 --file /path/to/package_foo-1.0-el6.x86_64.rpm --file /path/to/package_bar-1.0-el6.x86_64.rpm
+      # Tag the newly updated packages/manifests with a hard tag
+      nrepo --action tag --repo centos-6-custom --tag release_20150827
+      # Tag the hard tag with a soft tag that your clients reference
+      nrepo --action tag --repo centos-6-epel --src-tag release_20150827 --symlink --tag production
+
+      # Working with tags:
+      # Lets say upstream added broken updates you can easily roll back your production tag just by:
+      # --force is needed if a destination tag already exists
+      nrepo --action tag --repo $repo --src-tag $last_stable_releas_tag --symlink --tag production --force 
+
+CONFIGURATION
+    Global Options
+    data_dir
+        Path to location where repository files are stored eg:
+
+          data_dir = /path/to/repo_data
+
+    include
+        You can use this to include other conf files or directories eg:
+
+          include /path/to/repos.conf
+          include /path/to/conf.d
+
+    tag_style
+        This determines how tag directories are done eg:
+
+        bottomdir (default) would result in a data structure like:
+
+          $data_dir/$repo_name/$tag
+
+        topdir would result in a data structure like:
+
+          $data_dir/$tag/$repo_name
+
+    log_file
+        Path to log output to (No default) eg:
+
+          log_file = /path/to/logfile.log
+
+    log_file_level
+        Log messages to log file at this level (defaults to 'info') Levels
+        acceptable are what Log::Dispatch supports
+
+    screen_level
+        Same as log_level but to STDOUT...this value can be overwritten at
+        runtime using --log-level Defaults to 'notice'
+
+    Global and/or repository
+    hard_tag_regex
+        This option will use the repository config value if present
+        otherwise the global value if present eg:
+
+          hard_tag_regex = ^release_\d{8}$
+
+    Repository Config
+    A repository is defined as:
+
+      <repo $reponame>
+        $option1 = $value1
+        ...
+        $optionN = $valueN
+      </>
+
+    Valid options include:
+
+    type
+        The repository base type, ie Yum, Apt, Plain etc
+
+    local
+        The directory relative to $data_dir
+
+    url The url to mirror from
+
+    ca  An optional ca cert file used when mirroring from upstream https (ie
+        like Redhats cdn network)
+
+    cert
+        An optional cert file used when mirroring from upstream https (ie
+        like Redhats cdn network)
+
+    key An optional cert key file used when mirroring from upstream https
+        (ie like Redhats cdn network)
+
