@@ -56,8 +56,8 @@ my $conf_o = Config::General->new(
 my $config = {$conf_o->getall};
 
 # Setup Default Config
-$config->{tag_style}      ||= 'bottomdir';
-$config->{log_file_level} ||= 'info';
+$config->{tag_style}      ||= 'bottomdir'; # FIXME document this
+$config->{log_file_level} ||= 'info'; # FIXME document this
 $config->{screen_level}   ||= 'notice';
 # We allow the cli to override the config for ScreenLevel
 $config->{screen_level} = $log_level if $log_level;
@@ -74,8 +74,8 @@ my @log_outputs = (
 
 push @log_outputs, [
   'File',
-  'min_level' => $config->{log_file_level},
-  'filename'  => $config->{log_file},
+  'min_level' => $config->{log_file_level}, # FIXME document this
+  'filename'  => $config->{log_file}, # FIXME document this
   'newline'   => 1,
   'mode'      => '>>',
 ] if $config->{log_file};
@@ -148,7 +148,7 @@ Stay tuned for more!
  
   Script Options:
     --config-file    Path to config-file, defaults to /etc/repositorio.conf
-    --log-level      Change the stdout log level (overrides config)
+    --log-level      Change the stdout log level (overrides config, default: notice)
     --help           This helpful message
 
 =head1 EXAMPLES
