@@ -23,20 +23,20 @@ my $app_options = {};
 
 GetOptions(
   # App Options
-  'action=s'  => \$app_options->{'action'},
-  'file=s@'   => \$app_options->{'file'},
-  'arch=s'    => \$app_options->{'arch'},
-  'checksums' => \$app_options->{'checksums'},
-  'force'     => \$app_options->{'force'},
-  'repo=s'    => \$app_options->{'repo'},
-  'regex'     => \$app_options->{'regex'},
-  'tag=s'     => \$app_options->{'tag'},
-  'src-tag=s' => \$app_options->{'src-tag'},
-  'symlink'   => \$app_options->{'symlink'},
+  'action|a=s' => \$app_options->{'action'},
+  'file|f=s@'  => \$app_options->{'file'},
+  'arch=s'     => \$app_options->{'arch'},
+  'checksums'  => \$app_options->{'checksums'},
+  'force|f'    => \$app_options->{'force'},
+  'repo|r=s'   => \$app_options->{'repo'},
+  'regex'      => \$app_options->{'regex'},
+  'tag=s'      => \$app_options->{'tag'},
+  'src-tag=s'  => \$app_options->{'src-tag'},
+  'symlink'    => \$app_options->{'symlink'},
   # Script options
-  'config-file=s' => \$config_file,
-  'log-level=s'   => \$log_level,
-  'h|help'        => \$help,
+  'config-file|C=s' => \$config_file,
+  'log-level=s'    => \$log_level,
+  'h|help'         => \$help,
 )
 or pod2usage(-verbose=>2, -output => \*STDERR);
 
