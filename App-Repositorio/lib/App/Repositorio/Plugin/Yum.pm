@@ -59,7 +59,7 @@ sub get_metadata {
 
     # Grab the file
     if ($download) {
-      $self->download_binary_file(url => $m_url, dest => $dest_file);
+      return unless $self->download_binary_file(url => $m_url, dest => $dest_file);
     }
     else {
       $self->logger->debug(sprintf('get_metadata; repo: %s arch: %s file: %s skipping as its deemed up to date', $self->repo(), $arch, $location));
@@ -232,6 +232,7 @@ sub get_packages {
     }
   }
 }
+
 sub clean_files {
   my $self = shift;
   my %o = validate(@_, {

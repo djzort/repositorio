@@ -7,6 +7,7 @@ use Moo;
 use strictures 2;
 use namespace::clean;
 use Carp;
+use Try::Tiny;
 use Cwd qw(getcwd);
 use Params::Validate qw(:all);
 use Module::Pluggable::Object;
@@ -505,6 +506,7 @@ sub mirror {
   my %o = validate(@_, {
     'repo'      => { type => SCALAR,  callbacks => \%check_repo },
     'force'     => { type => BOOLEAN, default => 0 },
+    'ignore-errors' => { type => BOOLEAN, default => 0 },
     'arch'      => { type => SCALAR,  optional => 1 },
     'checksums' => { type => SCALAR,  optional => 1 },
     'regex'     => { type => BOOLEAN, optional => 1 },
@@ -514,10 +516,9 @@ sub mirror {
     my %options = %o;
     my $regex = qr#$o{'repo'}#;
     for my $repo (@repos) {
-      if ($repo =~ $regex) {
-        $options{'repo'} = $repo;
-        $self->_mirror(%options);
-      }
+      next unless $repo =~ $regex;
+      $options{'repo'} = $repo;
+      $self->_mirror(%options);
     }
     return 1
   }
@@ -548,6 +549,7 @@ sub _mirror {
     ssl_cert  => $self->config->{'repo'}->{$o{'repo'}}->{'cert'} || undef,
     ssl_key   => $self->config->{'repo'}->{$o{'repo'}}->{'key'} || undef,
     force     => $o{'force'},
+    'ignore_errors' => $o{'ignore-errors'},
   };
   my $plugin = $self->_get_plugin(
     type    => $self->config->{'repo'}->{$o{'repo'}}->{'type'},

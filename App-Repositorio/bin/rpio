@@ -33,6 +33,7 @@ GetOptions(
   'tag=s'      => \$app_options->{'tag'},
   'src-tag=s'  => \$app_options->{'src-tag'},
   'symlink'    => \$app_options->{'symlink'},
+  'ignore-errors' => \$app_options->{'ignore-errors'},
   # Script options
   'config-file|C=s' => \$config_file,
   'log-level=s'    => \$log_level,
@@ -117,6 +118,7 @@ Stay tuned for more!
         --repo (all|$regex|$repository_name)
       optional:
         --checksums
+        --ignore-errors
         --regex (uses --repo value as a regex)
     tag       Tag a repository
       requires:

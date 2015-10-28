@@ -35,6 +35,7 @@ has http      => ( is => 'lazy' );
 has ssl_ca    => ( is => 'ro', optional => 1 );
 has ssl_cert  => ( is => 'ro', optional => 1 );
 has ssl_key   => ( is => 'ro', optional => 1 );
+has ignore_errors => ( is => 'ro', default => 0 );
 
 sub _build_http {
   my $self = shift;
@@ -163,6 +164,7 @@ sub _validate_file_sha {
   $sha->addfile($file);
   return $sha->hexdigest eq $checksum ? 1 : undef;
 }
+
 sub _validate_file_sha256 {
   my $self     = shift;
   my $file     = shift;
@@ -183,12 +185,13 @@ sub mirror {
 
   for my $arch (@{$self->arches()}) {
     $self->logger->info(sprintf('mirror; starting repo: %s arch: %s from url: %s to dir: %s', $self->repo, $arch, $self->url, $self->dir));
-    my $packages = $self->get_metadata($arch);
+    my $packages = $self->get_metadata($arch) or return;
     $self->get_packages(arch => $arch, packages => $packages);
   }
   return 1
 
 }
+
 sub clean {
   my $self = shift;
 
@@ -384,7 +387,7 @@ sub download_binary_file {
         ) if $retry_count;
       }
       else {
-        $self->logger->log_and_croak(
+        my %bad = (
           level => 'error',
           message => sprintf(
             'download_binary_file; repo: %s url: %s failed and exhausted all retries',
@@ -392,6 +395,12 @@ sub download_binary_file {
             $o{url},
           )
         );
+        if ($self->ignore_errors) {
+            $self->logger->debug(%bad);
+            return
+        }
+        $self->logger->log_and_croak(%bad)
+
       }
     }
   }
