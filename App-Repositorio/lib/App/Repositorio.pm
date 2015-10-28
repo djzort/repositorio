@@ -129,6 +129,9 @@ sub _validate_config {
     message => sprintf "Unknown tag_style %s, must be topdir or bottomdir\n", $self->config->{tag_style},
   ) unless $self->config->{tag_style} =~ m/^(?:top|bottom)dir$/;
 
+  # do this once, and keep it hanging around as useful sideeffect
+  @repos = sort keys %{$self->config->{'repo'}};
+
   # required params for each repo config
   for my $repo (@repos) {
 
@@ -166,9 +169,6 @@ sub _validate_config {
       }
     }
   }
-
-  # do this once, and keep it hanging around as useful sideeffect
-  @repos = sort keys %{$self->config->{'repo'}};
 
   return 1
 }
