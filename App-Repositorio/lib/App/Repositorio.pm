@@ -126,13 +126,15 @@ sub go {
 {
 
   my $lockfh;
+  my $lockf;
 
   sub _lock {
     my $self = shift;
     my $repo = shift;
     my $dir  = shift;
-    $self->logger->info("Locking $repo");
-    open( $lockfh, '>', File::Spec->catfile( $dir, "$repo.lock" ) )
+    $lockf = File::Spec->catfile( $dir, "$repo.lock" );
+    $self->logger->info("Locking $repo via $lockf");
+    open( $lockfh, '>', $lockf )
       or croak "Error opening lock file: $!";
     flock( $lockfh, LOCK_EX | LOCK_NB )
       or $self->logger->log_and_croak(
@@ -145,7 +147,7 @@ sub go {
   sub _unlock {
     my $self = shift;
     my $repo = shift;
-    $self->logger->info("Unlocking $repo");
+    $self->logger->info("Unlocking $repo via $lockf");
     flock( $lockfh, LOCK_EX )
       or $self->logger->log_and_croak(
       level   => 'error',
@@ -156,9 +158,12 @@ sub go {
   }
 
   END {
-    if ($lockfh) {
+    if (fileno $lockfh) {
       flock( $lockfh, LOCK_EX );
       close $lockfh;
+    }
+    if ($lockf and -f $lockf) {
+      unlink $lockf
     }
   }
 
