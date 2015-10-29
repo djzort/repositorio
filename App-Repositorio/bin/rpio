@@ -145,7 +145,7 @@ Stay tuned for more!
         --repo $repository_name
         --arch $arch
         --file $path_to_file (--file can be supplied multiple times)
- 
+
   Script Options:
     --config-file    Path to config-file, defaults to /etc/repositorio.conf
     --log-level      Change the stdout log level (overrides config, default: notice)
