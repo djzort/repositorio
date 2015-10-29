@@ -10,6 +10,7 @@ use Carp;
 use Try::Tiny;
 use Cwd qw(getcwd);
 use Params::Validate qw(:all);
+use Fcntl qw/:flock LOCK_EX LOCK_UN LOCK_NB/;
 use Module::Pluggable::Object;
 use File::Spec;
 use App::Repositorio::Logger;
@@ -112,6 +113,38 @@ sub go {
   exit(0);
 }
 
+{
+
+my $lockfh;
+
+sub _lock {
+    my $self = shift;
+    my $repo = shift;
+    my $dir  = shift;
+    $self->logger->info("Locking $repo");
+    open( $lockfh, '>', File::Spec->catfile($dir,"$repo.lock")
+        or croak "Error opening lock file: $!";
+    flock($lockfh, LOCK_EX|LOCK_NB)
+        or $self->logger->log_and_croak(
+            level   => 'error',
+            message => "Couldnt lock $repo" );
+    return 1
+}
+
+sub _unlock {
+    my $self = shift;
+    my $repo = shift;
+    $self->logger->info("Unlocking $repo");
+    flock($lockfh, LOCK_EX)
+        or $self->logger->log_and_croak(
+            level   => 'error',
+            message => "Couldnt unlock $repo" );
+    close $lockfh;
+    return 1
+}
+
+}
+
 sub _validate_config {
   my $self = shift;
 
@@ -189,7 +222,8 @@ sub _get_plugin {
   )->plugins(%{$o{'options'}}) ) {
     $plugin = $p if $p->type() eq $o{'type'};
   }
-  $self->logger->log_and_croak(level => 'error', message => "Failed to find a plugin for type: $o{'type'}\n") unless $plugin;
+  $self->logger->log_and_croak(level => 'error', message => "Failed to find a plugin for type: $o{'type'}\n")
+      unless $plugin;
   return $plugin;
 }
 
@@ -321,7 +355,9 @@ sub del_file {
     options => $options,
   );
 
+  $self->_lock($options{repo},$options{dir});
   $plugin->del_file($o{'arch'}, $o{'file'});
+  $self->_unlock($options{repo})
 }
 
 =item B<clean()>
@@ -395,7 +431,9 @@ sub _clean {
     options => $options,
   );
 
+  $self->_lock($options{repo},$options{dir});
   $plugin->clean();
+  $self->_unlock($options{repo});
 }
 
 =item B<init()>
@@ -450,7 +488,9 @@ sub init {
     options => $options,
   );
 
+  $self->_lock($options{repo},$options{dir});
   $plugin->init($o{'arch'});
+  $self->_lock($options{repo},$options{dir});
 }
 
 =item B<list()>
@@ -555,7 +595,9 @@ sub _mirror {
     type    => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
     options => $options
   );
+  $self->_lock($options{repo},$options{dir});
   $plugin->mirror();
+  $self->_unlock($options{repo});
 }
 
 =item B<tag()>
@@ -621,6 +663,7 @@ sub tag {
     options => $options,
   );
 
+  $self->_lock($options{repo},$options{dir});
   $plugin->tag(
     src_dir        => $self->_get_repo_dir(repo => $o{'repo'}, tag => $o{'src-tag'}),
     src_tag        => $o{'src-tag'},
@@ -629,6 +672,7 @@ sub tag {
     symlink        => $o{'symlink'},
     hard_tag_regex => $self->config->{'repo'}->{'hard_tag_regex'} || $self->config->{'hard_tag_regex'},
   );
+  $self->_unlock($options{repo});
 }
 
 1;
