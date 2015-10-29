@@ -385,9 +385,9 @@ sub del_file {
     options => $options,
   );
 
-  $self->_lock( $options{repo}, $options{dir} );
+  $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->del_file( $o{'arch'}, $o{'file'} );
-  $self->_unlock( $options{repo} );
+  $self->_unlock( $options->{repo} );
 }
 
 =item B<clean()>
@@ -467,9 +467,9 @@ sub _clean {
     options => $options,
   );
 
-  $self->_lock( $options{repo}, $options{dir} );
+  $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->clean();
-  $self->_unlock( $options{repo} );
+  $self->_unlock( $options->{repo} );
 }
 
 =item B<init()>
@@ -528,9 +528,9 @@ sub init {
     options => $options,
   );
 
-  $self->_lock( $options{repo}, $options{dir} );
+  $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->init( $o{'arch'} );
-  $self->_lock( $options{repo}, $options{dir} );
+  $self->_lock( $options->{repo}, $options->{dir} );
 }
 
 =item B<list()>
@@ -641,9 +641,9 @@ sub _mirror {
     type    => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     options => $options
   );
-  $self->_lock( $options{repo}, $options{dir} );
+  $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->mirror();
-  $self->_unlock( $options{repo} );
+  $self->_unlock( $options->{repo} );
 }
 
 =item B<tag()>
@@ -709,7 +709,7 @@ sub tag {
     options => $options,
   );
 
-  $self->_lock( $options{repo}, $options{dir} );
+  $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->tag(
     src_dir => $self->_get_repo_dir( repo => $o{'repo'}, tag => $o{'src-tag'} ),
     src_tag => $o{'src-tag'},
@@ -719,7 +719,7 @@ sub tag {
     hard_tag_regex => $self->config->{'repo'}->{'hard_tag_regex'}
       || $self->config->{'hard_tag_regex'},
   );
-  $self->_unlock( $options{repo} );
+  $self->_unlock( $options->{repo} );
 }
 
 1;
