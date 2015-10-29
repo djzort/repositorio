@@ -8,6 +8,7 @@ use Moo;
 use strictures 2;
 use namespace::clean;
 use Carp;
+use POSIX qw(strftime);
 use Cwd qw(getcwd);
 use Params::Validate qw(:all);
 use Fcntl qw/:flock LOCK_EX LOCK_UN LOCK_NB/;
@@ -94,6 +95,9 @@ Tag a repository state see L<"tag()">
 
 sub go {
   my ( $self, $action, @args ) = @_;
+
+  $self->logger->info('starting: ' . strftime('%F %T %z',localtime));
+
   $self->_validate_config();
 
   my $dispatch = {
@@ -114,7 +118,7 @@ sub go {
 
   $dispatch->{$action}->( $self, @args );
 
-  $self->logger->info('done.');
+  $self->logger->info('finished: ' . strftime('%F %T %z',localtime));
 
   return 1
 }
