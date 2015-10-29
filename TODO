@@ -1,3 +1,2 @@
-- per-repo locking
 - list action should have csv,json,xml formats
 - move all log_and_croak type functions up to Repositorio.pm, just log info and debug in plugins, then croak() and let upstream decide.

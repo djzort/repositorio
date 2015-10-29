@@ -1,5 +1,6 @@
 #!/bin/false
 package App::Repositorio;
+
 # PODNAME: App::Repositorio
 # ABSTRACT: The core part of repositorio
 
@@ -18,17 +19,18 @@ use App::Repositorio::Logger;
 # VERSION
 
 has config => ( is => 'ro' );
-has logger => ( is => 'ro', lazy => 1, default => sub {App::Repositorio::Logger->new()} );
+has logger =>
+  ( is => 'ro', lazy => 1, default => sub { App::Repositorio::Logger->new() } );
 
 # these are for convenience
 my @repos;
 my %check_repo = (
-   'repo is configured' => sub {
-           my $r = shift;
-           my $v = shift;
-           return 1 if $v->{regex};
-           return ( grep {$r eq $_ } @repos ) ? 1 : 0
-   }
+  'repo is configured' => sub {
+    my $r = shift;
+    my $v = shift;
+    return 1 if $v->{regex};
+    return ( grep { $r eq $_ } @repos ) ? 1 : 0;
+  }
 );
 
 =head1 DESCRIPTION
@@ -92,7 +94,7 @@ Tag a repository state see L<"tag()">
 =cut
 
 sub go {
-  my ($self, $action, @args) = @_;
+  my ( $self, $action, @args ) = @_;
   $self->_validate_config();
 
   my $dispatch = {
@@ -105,43 +107,48 @@ sub go {
     'tag'      => \&tag,
   };
 
-  exists $dispatch->{$action} ||
-    $self->logger->log_and_croak(level => 'error', message => "ERROR: ${action} not supported.\n");
+  exists $dispatch->{$action}
+    || $self->logger->log_and_croak(
+    level   => 'error',
+    message => "ERROR: ${action} not supported.\n"
+    );
 
-  $dispatch->{$action}->($self, @args);
+  $dispatch->{$action}->( $self, @args );
 
   exit(0);
 }
 
 {
 
-my $lockfh;
+  my $lockfh;
 
-sub _lock {
+  sub _lock {
     my $self = shift;
     my $repo = shift;
     my $dir  = shift;
     $self->logger->info("Locking $repo");
-    open( $lockfh, '>', File::Spec->catfile($dir,"$repo.lock")
-        or croak "Error opening lock file: $!";
-    flock($lockfh, LOCK_EX|LOCK_NB)
-        or $self->logger->log_and_croak(
-            level   => 'error',
-            message => "Couldnt lock $repo" );
-    return 1
-}
+    open( $lockfh, '>', File::Spec->catfile( $dir, "$repo.lock" ) )
+      or croak "Error opening lock file: $!";
+    flock( $lockfh, LOCK_EX | LOCK_NB )
+      or $self->logger->log_and_croak(
+      level   => 'error',
+      message => "Couldnt lock $repo"
+      );
+    return 1;
+  }
 
-sub _unlock {
+  sub _unlock {
     my $self = shift;
     my $repo = shift;
     $self->logger->info("Unlocking $repo");
-    flock($lockfh, LOCK_EX)
-        or $self->logger->log_and_croak(
-            level   => 'error',
-            message => "Couldnt unlock $repo" );
+    flock( $lockfh, LOCK_EX )
+      or $self->logger->log_and_croak(
+      level   => 'error',
+      message => "Couldnt unlock $repo"
+      );
     close $lockfh;
-    return 1
-}
+    return 1;
+  }
 
 }
 
@@ -149,22 +156,25 @@ sub _validate_config {
   my $self = shift;
 
   # If data_dir is relative, lets expand it based on cwd
-  $self->config->{'data_dir'} = File::Spec->rel2abs($self->config->{data_dir});
+  $self->config->{'data_dir'} =
+    File::Spec->rel2abs( $self->config->{data_dir} );
 
   # Make sure data_dir exists
   $self->logger->log_and_croak(
     level   => 'error',
-    message => sprintf "datadir does not exist: %s\n", $self->config->{data_dir},
+    message => sprintf "datadir does not exist: %s\n",
+    $self->config->{data_dir},
   ) unless -d $self->config->{data_dir};
 
   # Ensure tag style option is valid
   $self->logger->log_and_croak(
     level   => 'error',
-    message => sprintf "Unknown tag_style %s, must be topdir or bottomdir\n", $self->config->{tag_style},
+    message => sprintf "Unknown tag_style %s, must be topdir or bottomdir\n",
+    $self->config->{tag_style},
   ) unless $self->config->{tag_style} =~ m/^(?:top|bottom)dir$/;
 
   # do this once, and keep it hanging around as useful sideeffect
-  @repos = sort keys %{$self->config->{'repo'}};
+  @repos = sort keys %{ $self->config->{'repo'} };
 
   # required params for each repo config
   for my $repo (@repos) {
@@ -173,66 +183,83 @@ sub _validate_config {
     for my $param (qw/type local arch/) {
       $self->logger->log_and_croak(
         level   => 'error',
-        message => sprintf "repo: %s missing param: %s\n", $repo, $param,
+        message => sprintf "repo: %s missing param: %s\n",
+        $repo, $param,
       ) unless $self->config->{repo}->{$repo}->{$param};
 
       # Data validation for specific types
 
-      # Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
-      if ($param eq 'arch') {
-        # We allow identical options which we use for arch, lets end up with an array regardless
+# Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
+      if ( $param eq 'arch' ) {
+
+# We allow identical options which we use for arch, lets end up with an array regardless
         my $arch = $self->config->{'repo'}->{$repo}->{'arch'};
         my $arches = ref($arch) eq 'ARRAY' ? $arch : [$arch];
         $self->config->{'repo'}->{$repo}->{'arch'} = $arches;
-        next
+        next;
       }
 
       # Allowed types
-      if ($param eq 'type') {
+      if ( $param eq 'type' ) {
         unless ( # FIXME this should come from the loaded plugins
-          $self->config->{repo}->{$repo}->{$param} eq 'Yum' ||
-          $self->config->{repo}->{$repo}->{$param} eq 'Apt' ||
-          $self->config->{repo}->{$repo}->{$param} eq 'Plain',
-        ) {
+          $self->config->{repo}->{$repo}->{$param} eq 'Yum'
+          || $self->config->{repo}->{$repo}->{$param} eq 'Apt'
+          || $self->config->{repo}->{$repo}->{$param} eq 'Plain',
+          )
+        {
           $self->logger->log_and_croak(
             level   => 'error',
-            message => sprintf "repo; %s param: %s value: %s is not supported\n", $repo, $param, $self->config->{repo}->{$repo}->{$param},
+            message => sprintf
+              "repo; %s param: %s value: %s is not supported\n",
+            $repo, $param,
+            $self->config->{repo}->{$repo}->{$param},
           );
         }
-        next
+        next;
       }
     }
   }
 
-  return 1
+  return 1;
 }
 
 sub _get_plugin {
-  my $self    = shift;
-  my %o = validate(@_, {
-    type      => { type    => SCALAR, },
-    options   => { options => HASHREF, },
-  });
+  my $self = shift;
+  my %o    = validate(
+    @_,
+    {
+      type    => { type    => SCALAR, },
+      options => { options => HASHREF, },
+    }
+  );
 
   my $plugin;
-  for my $p (Module::Pluggable::Object->new(
-    instantiate => 'new',
-    search_path => ['App::Repositorio::Plugin'],
-    except      => ['App::Repositorio::Plugin::Base'],
-  )->plugins(%{$o{'options'}}) ) {
+  for my $p (
+    Module::Pluggable::Object->new(
+      instantiate => 'new',
+      search_path => ['App::Repositorio::Plugin'],
+      except      => ['App::Repositorio::Plugin::Base'],
+    )->plugins( %{ $o{'options'} } )
+    )
+  {
     $plugin = $p if $p->type() eq $o{'type'};
   }
-  $self->logger->log_and_croak(level => 'error', message => "Failed to find a plugin for type: $o{'type'}\n")
-      unless $plugin;
+  $self->logger->log_and_croak(
+    level   => 'error',
+    message => "Failed to find a plugin for type: $o{'type'}\n"
+  ) unless $plugin;
   return $plugin;
 }
 
 sub _get_repo_dir {
   my $self = shift;
-  my %o = validate(@_, {
-    repo => { type => SCALAR },
-    tag =>  { type => SCALAR, default => 'head', },
-  });
+  my %o    = validate(
+    @_,
+    {
+      repo => { type => SCALAR },
+      tag  => { type => SCALAR, default => 'head', },
+    }
+  );
 
   my $data_dir  = $self->config->{data_dir};
   my $tag_style = $self->config->{tag_style};
@@ -240,14 +267,17 @@ sub _get_repo_dir {
   my $tag       = $o{'tag'};
   my $local     = $self->config->{'repo'}->{$repo}->{'local'};
 
-  if ($tag_style eq 'topdir') {
-    return File::Spec->catdir($data_dir, $tag, $local);
+  if ( $tag_style eq 'topdir' ) {
+    return File::Spec->catdir( $data_dir, $tag, $local );
   }
-  elsif ($tag_style eq 'bottomdir') {
-    return File::Spec->catdir($data_dir, $local, $tag);
+  elsif ( $tag_style eq 'bottomdir' ) {
+    return File::Spec->catdir( $data_dir, $local, $tag );
   }
   else {
-    $self->logger->log_and_croak(level => 'error', message => '_get_repo_dir: Unknown tag_style: '.$tag_style."\n");
+    $self->logger->log_and_croak(
+      level   => 'error',
+      message => '_get_repo_dir: Unknown tag_style: ' . $tag_style . "\n"
+    );
   }
 }
 
@@ -283,28 +313,28 @@ Boolean to enable force overwriting an existing file in the repository
 
 sub add_file {
   my $self = shift;
-  my %o = validate(
+  my %o    = validate(
     @_,
     {
-      'repo'      => { type => SCALAR, callbacks => \%check_repo },
-      'arch'      => { type => SCALAR },
-      'file'      => { type => SCALAR | ARRAYREF },
-      'force'     => { type => BOOLEAN, default => 0 },
+      'repo'  => { type => SCALAR,  callbacks => \%check_repo },
+      'arch'  => { type => SCALAR },
+      'file'  => { type => SCALAR | ARRAYREF },
+      'force' => { type => BOOLEAN, default   => 0 },
     },
   );
   my $options = {
-    repo      => $o{'repo'},
-    arches    => $self->config->{'repo'}->{$o{'repo'}}->{'arch'},
-    backend   => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
-    dir       => $self->_get_repo_dir(repo => $o{'repo'}),
-    force     => $o{'force'},
+    repo    => $o{'repo'},
+    arches  => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
+    backend => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
+    dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
+    force   => $o{'force'},
   };
   my $plugin = $self->_get_plugin(
-    type    => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
+    type    => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     options => $options,
   );
 
-  $plugin->add_file($o{'arch'}, $o{'file'});
+  $plugin->add_file( $o{'arch'}, $o{'file'} );
 }
 
 =item B<del_file()>
@@ -335,29 +365,29 @@ The filename to be removed to the repository
 
 sub del_file {
   my $self = shift;
-  my %o = validate(
+  my %o    = validate(
     @_,
     {
-      'repo'      => { type => SCALAR, callbacks => \%check_repo },
-      'arch'      => { type => SCALAR },
-      'file'      => { type => SCALAR | ARRAYREF },
+      'repo' => { type => SCALAR, callbacks => \%check_repo },
+      'arch' => { type => SCALAR },
+      'file' => { type => SCALAR | ARRAYREF },
     },
   );
   my $options = {
-    repo      => $o{'repo'},
-    arches    => $self->config->{'repo'}->{$o{'repo'}}->{'arch'},
-    backend   => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
-    dir       => $self->_get_repo_dir(repo => $o{'repo'}),
-    force     => $o{'force'},
+    repo    => $o{'repo'},
+    arches  => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
+    backend => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
+    dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
+    force   => $o{'force'},
   };
   my $plugin = $self->_get_plugin(
-    type    => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
+    type    => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     options => $options,
   );
 
-  $self->_lock($options{repo},$options{dir});
-  $plugin->del_file($o{'arch'}, $o{'file'});
-  $self->_unlock($options{repo})
+  $self->_lock( $options{repo}, $options{dir} );
+  $plugin->del_file( $o{'arch'}, $o{'file'} );
+  $self->_unlock( $options{repo} );
 }
 
 =item B<clean()>
@@ -385,55 +415,61 @@ If this boolean is enabled then use the repo parameter as a regex to match repos
 
 sub clean {
   my $self = shift;
-  my %o = validate(@_, {
-    repo  => { type => SCALAR, callbacks => \%check_repo },
-    arch  => { type => SCALAR, optional => 1 },
-    regex => { type => BOOLEAN, optional => 1 },
-    force => { type => BOOLEAN, optional => 1, },
-  });
+  my %o    = validate(
+    @_,
+    {
+      repo  => { type => SCALAR,  callbacks => \%check_repo },
+      arch  => { type => SCALAR,  optional  => 1 },
+      regex => { type => BOOLEAN, optional  => 1 },
+      force => { type => BOOLEAN, optional  => 1, },
+    }
+  );
+
   # treat the 'repo' value as regex
-  if ($o{'regex'}) {
+  if ( $o{'regex'} ) {
     my %options = %o;
-    my $regex = qr#$o{'repo'}#;
+    my $regex   = qr#$o{'repo'}#;
     for my $repo (@repos) {
-      if ($repo =~ $regex) {
+      if ( $repo =~ $regex ) {
         $options{'repo'} = $repo;
         $self->_clean(%options);
       }
     }
-    return 1
+    return 1;
   }
+
   # handle the 'all' special case
-  if ($o{'repo'} eq 'all') {
+  if ( $o{'repo'} eq 'all' ) {
     my %options = %o;
     for my $repo (@repos) {
       $options{'repo'} = $repo;
       $self->_clean(%options);
     }
-    return 1
+    return 1;
   }
+
   # otherwise, do this
   $self->_clean(%o);
 }
 
 sub _clean {
-  my ($self, %o) = @_;
+  my ( $self, %o ) = @_;
 
   my $options = {
-    repo      => $o{'repo'},
-    arches    => $self->config->{'repo'}->{$o{'repo'}}->{'arch'},
-    backend   => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
-    dir       => $self->_get_repo_dir(repo => $o{'repo'}),
-    force     => $o{'force'},
+    repo    => $o{'repo'},
+    arches  => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
+    backend => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
+    dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
+    force   => $o{'force'},
   };
   my $plugin = $self->_get_plugin(
-    type    => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
+    type    => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     options => $options,
   );
 
-  $self->_lock($options{repo},$options{dir});
+  $self->_lock( $options{repo}, $options{dir} );
   $plugin->clean();
-  $self->_unlock($options{repo});
+  $self->_unlock( $options{repo} );
 }
 
 =item B<init()>
@@ -460,27 +496,31 @@ Rather than initialising all arches configured, just do this one
 
 sub init {
   my $self = shift;
-  my %o = validate(@_, {
-    repo => { type => SCALAR, callbacks => \%check_repo },
-    arch => { type => SCALAR, optional => 1 },
-  });
+  my %o    = validate(
+    @_,
+    {
+      repo => { type => SCALAR, callbacks => \%check_repo },
+      arch => { type => SCALAR, optional  => 1 },
+    }
+  );
 
-  my $repo_config = $self->config->{'repo'}->{$o{'repo'}};
+  my $repo_config = $self->config->{'repo'}->{ $o{'repo'} };
 
-  # FIXME plugins themselves should decide if they can be init'd
-  # Initialising a mirrored repo will result in different manifests to what the mirror has
-  if ($repo_config->{'url'}) {
+# FIXME plugins themselves should decide if they can be init'd
+# Initialising a mirrored repo will result in different manifests to what the mirror has
+  if ( $repo_config->{'url'} ) {
     $self->logger->log_and_croak(
       level => 'error',
-      message => 'init: this is action is only valid for local repositories...this repo has a url specified',
+      message =>
+        'init: this is action is only valid for local repositories...this repo has a url specified',
     );
   }
 
   my $options = {
-    repo      => $o{'repo'},
-    arches    => $repo_config->{'arch'},
-    backend   => $repo_config->{'type'},
-    dir       => $self->_get_repo_dir(repo => $o{'repo'}),
+    repo    => $o{'repo'},
+    arches  => $repo_config->{'arch'},
+    backend => $repo_config->{'type'},
+    dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
   };
 
   my $plugin = $self->_get_plugin(
@@ -488,9 +528,9 @@ sub init {
     options => $options,
   );
 
-  $self->_lock($options{repo},$options{dir});
-  $plugin->init($o{'arch'});
-  $self->_lock($options{repo},$options{dir});
+  $self->_lock( $options{repo}, $options{dir} );
+  $plugin->init( $o{'arch'} );
+  $self->_lock( $options{repo}, $options{dir} );
 }
 
 =item B<list()>
@@ -506,7 +546,7 @@ sub list {
   print "Repository list:\n";
   print sprintf "|%8s|%8s|%50s|\n", 'Type', 'Mirrored', 'Name';
   for my $repo (@repos) {
-    my $type     = $self->config->{repo}->{$repo}->{type};
+    my $type = $self->config->{repo}->{$repo}->{type};
     my $mirrored = $self->config->{repo}->{$repo}->{url} ? 'Yes' : 'No';
     print sprintf "|%8s|%8s|%50s|\n", $type, $mirrored, $repo;
   }
@@ -543,61 +583,67 @@ If this boolean is enabled then use the repo parameter as a regex to match repos
 
 sub mirror {
   my $self = shift;
-  my %o = validate(@_, {
-    'repo'      => { type => SCALAR,  callbacks => \%check_repo },
-    'force'     => { type => BOOLEAN, default => 0 },
-    'ignore-errors' => { type => BOOLEAN, default => 0 },
-    'arch'      => { type => SCALAR,  optional => 1 },
-    'checksums' => { type => SCALAR,  optional => 1 },
-    'regex'     => { type => BOOLEAN, optional => 1 },
-  });
+  my %o    = validate(
+    @_,
+    {
+      'repo'          => { type => SCALAR,  callbacks => \%check_repo },
+      'force'         => { type => BOOLEAN, default   => 0 },
+      'ignore-errors' => { type => BOOLEAN, default   => 0 },
+      'arch'          => { type => SCALAR,  optional  => 1 },
+      'checksums'     => { type => SCALAR,  optional  => 1 },
+      'regex'         => { type => BOOLEAN, optional  => 1 },
+    }
+  );
+
   # treat the 'repo' value as regex
-  if ($o{'regex'}) {
+  if ( $o{'regex'} ) {
     my %options = %o;
-    my $regex = qr#$o{'repo'}#;
+    my $regex   = qr#$o{'repo'}#;
     for my $repo (@repos) {
       next unless $repo =~ $regex;
       $options{'repo'} = $repo;
       $self->_mirror(%options);
     }
-    return 1
+    return 1;
   }
+
   # handle the 'all' special case
-  if ($o{'repo'} eq 'all') {
+  if ( $o{'repo'} eq 'all' ) {
     my %options = %o;
     for my $repo (@repos) {
       $options{'repo'} = $repo;
       $self->_mirror(%options);
     }
-    return 1
+    return 1;
   }
+
   # otherwise, do this
   $self->_mirror(%o);
 }
 
 sub _mirror {
-  my ($self, %o) = @_;
+  my ( $self, %o ) = @_;
 
   my $options = {
     repo      => $o{'repo'},
-    arches    => $self->config->{'repo'}->{$o{'repo'}}->{'arch'},
-    url       => $self->config->{'repo'}->{$o{'repo'}}->{'url'},
+    arches    => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
+    url       => $self->config->{'repo'}->{ $o{'repo'} }->{'url'},
     checksums => $o{'checksums'},
-    backend   => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
-    dir       => $self->_get_repo_dir(repo => $o{'repo'}),
-    ssl_ca    => $self->config->{'repo'}->{$o{'repo'}}->{'ca'} || undef,
-    ssl_cert  => $self->config->{'repo'}->{$o{'repo'}}->{'cert'} || undef,
-    ssl_key   => $self->config->{'repo'}->{$o{'repo'}}->{'key'} || undef,
+    backend   => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
+    dir       => $self->_get_repo_dir( repo => $o{'repo'} ),
+    ssl_ca    => $self->config->{'repo'}->{ $o{'repo'} }->{'ca'} || undef,
+    ssl_cert  => $self->config->{'repo'}->{ $o{'repo'} }->{'cert'} || undef,
+    ssl_key   => $self->config->{'repo'}->{ $o{'repo'} }->{'key'} || undef,
     force     => $o{'force'},
     'ignore_errors' => $o{'ignore-errors'},
   };
   my $plugin = $self->_get_plugin(
-    type    => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
+    type    => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     options => $options
   );
-  $self->_lock($options{repo},$options{dir});
+  $self->_lock( $options{repo}, $options{dir} );
   $plugin->mirror();
-  $self->_unlock($options{repo});
+  $self->_unlock( $options{repo} );
 }
 
 =item B<tag()>
@@ -639,40 +685,41 @@ Force will overwrite a pre existing dest-tag location
 
 sub tag {
   my $self = shift;
-  my %o = validate(
+  my %o    = validate(
     @_,
     {
-      'repo'    => { type => SCALAR, callbacks => \%check_repo },
+      'repo'    => { type => SCALAR,  callbacks => \%check_repo },
       'tag'     => { type => SCALAR },
-      'src-tag' => { type => SCALAR,  default => 'head' },
-      'symlink' => { type => BOOLEAN, default => 0 },
-      'force'   => { type => BOOLEAN, default => 0 },
+      'src-tag' => { type => SCALAR,  default   => 'head' },
+      'symlink' => { type => BOOLEAN, default   => 0 },
+      'force'   => { type => BOOLEAN, default   => 0 },
     },
   );
 
   my $options = {
-    repo      => $o{'repo'},
-    arches    => $self->config->{'repo'}->{$o{'repo'}}->{'arch'},
-    backend   => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
-    dir       => $self->_get_repo_dir(repo => $o{'repo'}),
-    force     => $o{'force'},
+    repo    => $o{'repo'},
+    arches  => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
+    backend => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
+    dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
+    force   => $o{'force'},
   };
 
   my $plugin = $self->_get_plugin(
-    type    => $self->config->{'repo'}->{$o{'repo'}}->{'type'},
+    type    => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     options => $options,
   );
 
-  $self->_lock($options{repo},$options{dir});
+  $self->_lock( $options{repo}, $options{dir} );
   $plugin->tag(
-    src_dir        => $self->_get_repo_dir(repo => $o{'repo'}, tag => $o{'src-tag'}),
-    src_tag        => $o{'src-tag'},
-    dest_dir       => $self->_get_repo_dir(repo => $o{'repo'}, tag => $o{'tag'}),
-    dest_tag       => $o{'tag'},
-    symlink        => $o{'symlink'},
-    hard_tag_regex => $self->config->{'repo'}->{'hard_tag_regex'} || $self->config->{'hard_tag_regex'},
+    src_dir => $self->_get_repo_dir( repo => $o{'repo'}, tag => $o{'src-tag'} ),
+    src_tag => $o{'src-tag'},
+    dest_dir => $self->_get_repo_dir( repo => $o{'repo'}, tag => $o{'tag'} ),
+    dest_tag => $o{'tag'},
+    symlink  => $o{'symlink'},
+    hard_tag_regex => $self->config->{'repo'}->{'hard_tag_regex'}
+      || $self->config->{'hard_tag_regex'},
   );
-  $self->_unlock($options{repo});
+  $self->_unlock( $options{repo} );
 }
 
 1;
