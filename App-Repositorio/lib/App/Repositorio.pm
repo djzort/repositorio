@@ -150,6 +150,13 @@ sub go {
     return 1;
   }
 
+  END {
+    if ($lockfh) {
+      flock( $lockfh, LOCK_EX );
+      close $lockfh;
+    }
+  }
+
 }
 
 sub _validate_config {
