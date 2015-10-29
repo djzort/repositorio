@@ -96,7 +96,7 @@ Tag a repository state see L<"tag()">
 sub go {
   my ( $self, $action, @args ) = @_;
 
-  $self->logger->info('starting: ' . strftime('%F %T %z',localtime));
+  $self->logger->info( 'starting: ' . strftime( '%F %T %z', localtime ) );
 
   $self->_validate_config();
 
@@ -118,9 +118,9 @@ sub go {
 
   $dispatch->{$action}->( $self, @args );
 
-  $self->logger->info('finished: ' . strftime('%F %T %z',localtime));
+  $self->logger->info( 'finished: ' . strftime( '%F %T %z', localtime ) );
 
-  return 1
+  return 1;
 }
 
 {
