@@ -1,2 +1,4 @@
 - list action should have csv,json,xml formats
 - move all log_and_croak type functions up to Repositorio.pm, just log info and debug in plugins, then croak() and let upstream decide.
+- allow multiple mirrors (falls back from one to the next) as per https://github.com/RexOps/repositorio/issues/25
+- speed limit downloads (see https://github.com/shoichikaji/HTTP-Tiny-Bandwidth, not yet in CPAN)

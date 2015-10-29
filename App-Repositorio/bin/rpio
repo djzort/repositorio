@@ -93,6 +93,8 @@ for my $param (keys %{$app_options}) {
 }
 $a->go($action, $app_options) unless caller();
 
+exit 0
+
 __END__
 
 =pod

@@ -8,7 +8,6 @@ use Moo;
 use strictures 2;
 use namespace::clean;
 use Carp;
-use Try::Tiny;
 use Cwd qw(getcwd);
 use Params::Validate qw(:all);
 use Fcntl qw/:flock LOCK_EX LOCK_UN LOCK_NB/;
@@ -115,7 +114,9 @@ sub go {
 
   $dispatch->{$action}->( $self, @args );
 
-  exit(0);
+  $self->logger->info('done.');
+
+  return 1
 }
 
 {
