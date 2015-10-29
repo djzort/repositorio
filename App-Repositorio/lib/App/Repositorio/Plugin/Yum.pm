@@ -203,6 +203,7 @@ sub get_packages {
     packages => { type => ARRAYREF },
   });
 
+  my $count    = 0;
   my $arch     = $o{'arch'};
   my $base_dir = File::Spec->catdir($self->dir(), $arch);
 
@@ -219,18 +220,19 @@ sub get_packages {
     $self->make_dir($dest_dir);
 
     # Check if we have the local file
-    if (! $self->validate_file(
+    if ($self->validate_file(
         filename => $dest_file,
         check    => $package->{'validate'}->{'type'},
         value    => $package->{'validate'}->{'value'},
       )) {
-      $self->logger->notice(sprintf('get_packages; repo: %s arch: %s package: %s', $self->repo(), $arch, $location));
-      $self->download_binary_file(url => $p_url, dest => $dest_file);
-    }
-    else {
       $self->logger->debug(sprintf('get_packages; repo: %s arch: %s package: %s skipping as its deemed up to date', $self->repo(), $arch, $location));
+      next
     }
+
+    $self->logger->notice(sprintf('get_packages; repo: %s arch: %s package: %s', $self->repo(), $arch, $location));
+    $count += $self->download_binary_file(url => $p_url, dest => $dest_file);
   }
+  return $count
 }
 
 sub clean_files {

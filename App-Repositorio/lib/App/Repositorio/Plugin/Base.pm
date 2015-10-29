@@ -178,17 +178,19 @@ sub _validate_file_sha256 {
 sub mirror {
   my $self = shift;
 
+  my $count = 0;
+
   unless ($self->url) {
       $self->logger->info(sprintf('mirror; (no url) skipping repo: %s', $self->repo));
-      return
+      return $count
   }
 
   for my $arch (@{$self->arches()}) {
     $self->logger->info(sprintf('mirror; starting repo: %s arch: %s from url: %s to dir: %s', $self->repo, $arch, $self->url, $self->dir));
     my $packages = $self->get_metadata($arch) or return;
-    $self->get_packages(arch => $arch, packages => $packages);
+    $count += $self->get_packages(arch => $arch, packages => $packages);
   }
-  return 1
+  return $count
 
 }
 
@@ -366,7 +368,7 @@ sub download_binary_file {
     if ($res->{'success'}) {
       return 1;
     }
-    else {
+
       $self->logger->debug(
         sprintf(
           'download_binary_file; repo: %s url: %s failed with status: %s reason: %s',
@@ -397,12 +399,11 @@ sub download_binary_file {
         );
         if ($self->ignore_errors) {
             $self->logger->debug(%bad);
-            return
+            return 0 # needs to be a number
         }
         $self->logger->log_and_croak(%bad)
 
       }
-    }
   }
 }
 
