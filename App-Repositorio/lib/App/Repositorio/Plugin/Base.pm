@@ -190,6 +190,7 @@ sub mirror {
     my $packages = $self->get_metadata($arch) or return;
     $count += $self->get_packages(arch => $arch, packages => $packages);
   }
+  $self->logger->info(sprintf('mirror; downloaded %d', $count));
   return $count
 
 }
