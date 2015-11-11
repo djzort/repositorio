@@ -132,6 +132,7 @@ sub go {
     my $self = shift;
     my $repo = shift;
     my $dir  = shift;
+    croak "Can't lock, directory doesnt exist: $dir\n" unless -d $dir;
     $lockf = File::Spec->catfile( $dir, "$repo.lock" );
     $self->logger->info("Locking $repo via $lockf");
     open( $lockfh, '>', $lockf )
@@ -402,6 +403,7 @@ sub del_file {
     options => $options,
   );
 
+  $plugin->make_dir($options->{dir}) unless -d $options->{dir};
   $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->del_file( $o{'arch'}, $o{'file'} );
   $self->_unlock( $options->{repo} );
@@ -484,6 +486,7 @@ sub _clean {
     options => $options,
   );
 
+  $plugin->make_dir($options->{dir}) unless -d $options->{dir};
   $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->clean();
   $self->_unlock( $options->{repo} );
@@ -545,6 +548,7 @@ sub init {
     options => $options,
   );
 
+  $plugin->make_dir($options->{dir}) unless -d $options->{dir};
   $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->init( $o{'arch'} );
   $self->_lock( $options->{repo}, $options->{dir} );
@@ -658,6 +662,7 @@ sub _mirror {
     type    => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     options => $options
   );
+  $plugin->make_dir($options->{dir}) unless -d $options->{dir};
   $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->mirror();
   $self->_unlock( $options->{repo} );
@@ -726,6 +731,7 @@ sub tag {
     options => $options,
   );
 
+  $plugin->make_dir($options->{dir}) unless -d $options->{dir};
   $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->tag(
     src_dir => $self->_get_repo_dir( repo => $o{'repo'}, tag => $o{'src-tag'} ),
