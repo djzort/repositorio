@@ -1,5 +1,5 @@
 NAME
-    nrepo - Repository Management
+    repositorio - Repository Management
 
 DESCRIPTION
     Repositorio is designed to be an extensible repository management system
@@ -7,7 +7,7 @@ DESCRIPTION
     repositories. Stay tuned for more!
 
 SYNOPSIS
-      nrepo --action X [options]
+      rpio --action <action> [options]
 
       See perldoc App::Repositorio for all valid actions and their in depth descriptions
 
@@ -44,9 +44,9 @@ SYNOPSIS
             --repo $repository_name
             --arch $arch
             --file $path_to_file (--file can be supplied multiple times)
- 
+
       Script Options:
-        --config-file    Path to config-file, defaults to ./conf/nrepo.conf
+        --config-file    Path to config-file, defaults to ./conf/repositorio.conf
         --log-level      Change the stdout log level (overrides config)
         --help           This helpful message
 
@@ -54,25 +54,25 @@ EXAMPLES
       # Working with mirrored repos:
 
       # Update the repository from upstream to current
-      nrepo --action mirror --repo centos-6-epel
+      rpio --action mirror --repo centos-6-epel
       # Tag the newly updated packages/manifests with a hard tag
-      nrepo --action tag --repo centos-6-epel --tag release_20150827
+      rpio --action tag --repo centos-6-epel --tag release_20150827
       # Tag the hard tag with a soft tag that your clients reference
-      nrepo --action tag --repo centos-6-epel --src-tag release_20150827 --symlink --tag production
+      rpio --action tag --repo centos-6-epel --src-tag release_20150827 --symlink --tag production
 
       # Working with local repos:
 
       # Add some packages:
-      nrepo --action add-file --repo centos-6-custom --arch x86_64 --file /path/to/package_foo-1.0-el6.x86_64.rpm --file /path/to/package_bar-1.0-el6.x86_64.rpm
+      rpio --action add-file --repo centos-6-custom --arch x86_64 --file /path/to/package_foo-1.0-el6.x86_64.rpm --file /path/to/package_bar-1.0-el6.x86_64.rpm
       # Tag the newly updated packages/manifests with a hard tag
-      nrepo --action tag --repo centos-6-custom --tag release_20150827
+      rpio --action tag --repo centos-6-custom --tag release_20150827
       # Tag the hard tag with a soft tag that your clients reference
-      nrepo --action tag --repo centos-6-epel --src-tag release_20150827 --symlink --tag production
+      rpio --action tag --repo centos-6-epel --src-tag release_20150827 --symlink --tag production
 
       # Working with tags:
       # Lets say upstream added broken updates you can easily roll back your production tag just by:
       # --force is needed if a destination tag already exists
-      nrepo --action tag --repo $repo --src-tag $last_stable_releas_tag --symlink --tag production --force 
+      rpio --action tag --repo $repo --src-tag $last_stable_releas_tag --symlink --tag production --force 
 
 CONFIGURATION
     Global Options
@@ -125,7 +125,7 @@ CONFIGURATION
         $option1 = $value1
         ...
         $optionN = $valueN
-      </>
+      </repo>
 
     Valid options include:
 
@@ -134,6 +134,9 @@ CONFIGURATION
 
     local
         The directory relative to $data_dir
+
+    arch
+        The architecture of the repo (e.g. x86_64, i386)
 
     url The url to mirror from
 
