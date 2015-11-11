@@ -158,9 +158,9 @@ sub go {
   }
 
   END {
-    if (fileno $lockfh) {
+    if (defined $lockfh && fileno $lockfh) {
       flock( $lockfh, LOCK_EX );
-      close $lockfh;
+      close $lockfh
     }
     if ($lockf and -f $lockf) {
       unlink $lockf
