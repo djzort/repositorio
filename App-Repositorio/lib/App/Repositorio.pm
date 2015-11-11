@@ -29,6 +29,7 @@ my %check_repo = (
     my $r = shift;
     my $v = shift;
     return 1 if $v->{regex};
+    return 1 if $r eq 'all';
     return ( grep { $r eq $_ } @repos ) ? 1 : 0;
   }
 );
