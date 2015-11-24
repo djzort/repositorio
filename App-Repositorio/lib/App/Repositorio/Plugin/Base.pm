@@ -265,7 +265,7 @@ sub tag {
       dest_tag       => { type => SCALAR },
       dest_dir       => { type => SCALAR },
       symlink        => { type => BOOLEAN, default => 0 },
-      hard_tag_regex => { type => SCALAR, optional => 1 },
+      hard_tag_regex => { type => SCALAR | UNDEF, optional => 1 },
     }
   );
 
