@@ -323,7 +323,7 @@ sub add_file {
   for my $file ( @${files} ) {
     my $filename = basename($file);
     my $dest_file =
-      File::Spec->catfile( $self->dir(), $arch, $package_dir, $filename );
+      File::Spec->catfile( $package_dir, $filename );
     $self->logger->debug(
       sprintf 'add_file; repo: %s arch: %s file: %s dest_file: %s',
       $self->repo(), $arch, $file, $dest_file );
