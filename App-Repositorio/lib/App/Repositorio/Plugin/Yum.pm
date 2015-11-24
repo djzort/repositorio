@@ -419,8 +419,7 @@ sub init_arch {
   }
 
   my @cmd = (
-    $createrepo_bin, '--basedir', $dir, '--outputdir', $dir,
-    $self->packages_dir()
+    $createrepo_bin, '--basedir', $dir, '--outputdir', $dir, $dir
   );
 
 # --update will reuse the existing metadata if the file is already defined and size/mtime matches
