@@ -374,6 +374,25 @@ sub tag {
 
   # handle symlink destination
   else {
+    # ensure the parent directory of the symlink exists
+    #Is there a nicer way to right this without resorting to multiple operations on the variable?
+    #Basically, it splits the dest_dir into parts, and then catdirs all the components except the last one.
+    my $dest_dir_parent = File::Spec->catdir(
+      ( splice( @{[ File::Spec->splitdir( $o{'dest_dir'} ) ]}, 0, -1 ) )
+    );
+
+    unless ( -d $dest_dir_parent ) {
+      $self->logger->log_and_die(
+        level   => 'error',
+        message => sprintf(
+          "tag; repo: %s couldnt create parent dir for link dst_dir: %s: $!",
+          $self->repo(), $o{'dest_dir'}
+        ),
+      ) unless make_path($dest_dir_parent) and -d $dest_dir_parent;
+
+
+    }
+
     if ( symlink $o{'src_dir'}, $o{'dest_dir'} ) {
       $self->logger->debug(
         sprintf(
