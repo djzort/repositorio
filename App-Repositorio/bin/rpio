@@ -24,15 +24,16 @@ my $app_options = {};
 GetOptions(
   # App Options
   'action|a=s' => \$app_options->{'action'},
-  'file|f=s@'  => \$app_options->{'file'},
   'arch=s'     => \$app_options->{'arch'},
   'checksums'  => \$app_options->{'checksums'},
+  'file|f=s@'  => \$app_options->{'file'},
   'force|f'    => \$app_options->{'force'},
-  'repo|r=s'   => \$app_options->{'repo'},
+  'format=s'   => \$app_options->{'format'},
   'regex'      => \$app_options->{'regex'},
-  'tag=s'      => \$app_options->{'tag'},
+  'repo|r=s'   => \$app_options->{'repo'},
   'src-tag=s'  => \$app_options->{'src-tag'},
   'symlink'    => \$app_options->{'symlink'},
+  'tag=s'      => \$app_options->{'tag'},
   'ignore-errors' => \$app_options->{'ignore-errors'},
   # Script options
   'config-file|C=s' => \$config_file,
@@ -115,6 +116,8 @@ Stay tuned for more!
 
   Actions:
     list      List all configured repositories
+      optional:
+        --format (default|csv|json)
     mirror    Mirror a repository
       requires:
         --repo (all|$regex|$repository_name)

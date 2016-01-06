@@ -76,19 +76,19 @@ Used to clean a repository of no longer referenced files eg: no longer reference
 
 =item B<init>
 
-Used to initialise manifests for a local repository see L<"init()">
+Used to initialise manifests for a local repository see L<"/init()">
 
 =item B<list>
 
-Used to list configured repositories see L<"list()">
+Used to list configured repositories see L<"/list()">
 
 =item B<mirror>
 
-Used to update a repository from its configured mirror see L<"mirror()">
+Used to update a repository from its configured mirror see L<"/mirror()">
 
 =item B<tag>
 
-Tag a repository state see L<"tag()">
+Tag a repository state see L<"/tag()">
 
 =back
 
@@ -561,17 +561,62 @@ Action: list
 
 Description: Lists the repositories as reflected in the config
 
+Options:
+
+=over 4
+
+=item format
+
+The output format. Either I<json>, I<csv> or I<default>.
+
+=back
+
 =cut
 
 sub list {
   my $self = shift;
-  print "Repository list:\n";
-  print sprintf "|%8s|%8s|%50s|\n", 'Type', 'Mirrored', 'Name';
-  for my $repo (@repos) {
-    my $type = $self->config->{repo}->{$repo}->{type};
-    my $mirrored = $self->config->{repo}->{$repo}->{url} ? 'Yes' : 'No';
-    print sprintf "|%8s|%8s|%50s|\n", $type, $mirrored, $repo;
+  my %o    = validate(
+    @_,
+    {
+      format => { type => SCALAR, default => 'default', regex => qw/^(default|json|csv)$/ },
+    }
+  );
+
+  # perhaps this next section could be more elegant, but doing things manually keeps deps down
+
+  if ($o{format} eq 'default') {
+    print "Repository list:\n";
+    printf "|%8s|%8s|%50s|\n", 'Type', 'Mirrored', 'Name';
+    for my $repo (@repos) {
+      my $type = $self->config->{repo}->{$repo}->{type};
+      my $mirrored = $self->config->{repo}->{$repo}->{url} ? 'Yes' : 'No';
+      print sprintf "|%8s|%8s|%50s|\n", $type, $mirrored, $repo;
+    }
+    return 1
   }
+
+  if ($o{format} eq 'csv') {
+    print join( ',', 'Type', 'Mirrored', 'Name' );
+    for my $repo (@repos) {
+      my $type = $self->config->{repo}->{$repo}->{type};
+      my $mirrored = $self->config->{repo}->{$repo}->{url} ? 'Yes' : 'No';
+      print "\n", join( ',', $type, $mirrored, $repo );
+    }
+    return 1
+  }
+
+  if ($o{format} eq 'json') {
+    my @list;
+    for my $repo (@repos) {
+      my $type = $self->config->{repo}->{$repo}->{type};
+      my $mirrored = $self->config->{repo}->{$repo}->{url} ? 'true' : 'false';
+      push @list, qq|{"type":"$type","mirrored":$mirrored,"name":"$repo"}|;
+    }
+    print '{"repos":[',join(',',@list),"]}\n";
+    return 1
+  }
+
+  # shouldnt get here
 }
 
 =item B<mirror()>
@@ -754,4 +799,4 @@ sub tag {
 
 __END__
 
-
+# vim: softtabstop=2 tabstop=2 shiftwidth=2 ft=perl expandtab smarttab
