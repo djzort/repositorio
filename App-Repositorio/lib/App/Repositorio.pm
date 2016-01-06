@@ -244,9 +244,9 @@ sub _validate_config {
 
 sub _get_plugin {
   my $self = shift;
-  my %o    = validate(
-    @_,
-    {
+  my %o    = validate_with(
+    params => \@_,
+    spec => {
       type    => { type    => SCALAR, },
       options => { options => HASHREF, },
     }
@@ -272,9 +272,9 @@ sub _get_plugin {
 
 sub _get_repo_dir {
   my $self = shift;
-  my %o    = validate(
-    @_,
-    {
+  my %o    = validate_with(
+    params => \@_,
+    spec => {
       repo => { type => SCALAR },
       tag  => { type => SCALAR, default => 'head', },
     }
@@ -332,9 +332,9 @@ Boolean to enable force overwriting an existing file in the repository
 
 sub add_file {
   my $self = shift;
-  my %o    = validate(
-    @_,
-    {
+  my %o    = validate_with(
+    params => @_,
+    spec => {
       'repo'  => { type => SCALAR,  callbacks => \%check_repo },
       'arch'  => { type => SCALAR },
       'file'  => { type => SCALAR | ARRAYREF },
@@ -384,9 +384,9 @@ The filename to be removed to the repository
 
 sub del_file {
   my $self = shift;
-  my %o    = validate(
-    @_,
-    {
+  my %o    = validate_with(
+    params => \@_,
+    spec => {
       'repo' => { type => SCALAR, callbacks => \%check_repo },
       'arch' => { type => SCALAR },
       'file' => { type => SCALAR | ARRAYREF },
@@ -435,9 +435,9 @@ If this boolean is enabled then use the repo parameter as a regex to match repos
 
 sub clean {
   my $self = shift;
-  my %o    = validate(
-    @_,
-    {
+  my %o    = validate_with(
+    params => \@_,
+    spec => {
       repo  => { type => SCALAR,  callbacks => \%check_repo },
       arch  => { type => SCALAR,  optional  => 1 },
       regex => { type => BOOLEAN, optional  => 1 },
@@ -517,9 +517,9 @@ Rather than initialising all arches configured, just do this one
 
 sub init {
   my $self = shift;
-  my %o    = validate(
-    @_,
-    {
+  my %o    = validate_with(
+    params => \@_,
+    spec => {
       repo => { type => SCALAR, callbacks => \%check_repo },
       arch => { type => SCALAR, optional  => 1 },
     }
@@ -575,9 +575,9 @@ The output format. Either I<json>, I<csv> or I<default>.
 
 sub list {
   my $self = shift;
-  my %o    = validate(
-    @_,
-    {
+  my %o    = validate_with(
+    params => \@_,
+    spec => {
       format => { type => SCALAR, default => 'default', regex => qw/^(default|json|csv)$/ },
     }
   );
@@ -650,9 +650,9 @@ If this boolean is enabled then use the repo parameter as a regex to match repos
 
 sub mirror {
   my $self = shift;
-  my %o    = validate(
-    @_,
-    {
+  my %o    = validate_with(
+    params => \@_,
+    spec => {
       'repo'          => { type => SCALAR,  callbacks => \%check_repo },
       'force'         => { type => BOOLEAN, default   => 0 },
       'ignore-errors' => { type => BOOLEAN, default   => 0 },
@@ -753,9 +753,9 @@ Force will overwrite a pre existing dest-tag location
 
 sub tag {
   my $self = shift;
-  my %o    = validate(
-    @_,
-    {
+  my %o    = validate_with(
+    params => \@_,
+    spec => {
       'repo'    => { type => SCALAR,  callbacks => \%check_repo },
       'tag'     => { type => SCALAR },
       'src-tag' => { type => SCALAR,  default   => 'head' },
