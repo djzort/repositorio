@@ -598,6 +598,10 @@ sub list {
   if ($o{format} eq 'csv') {
     print join( ',', 'Type', 'Mirrored', 'Name' );
     for my $repo (@repos) {
+      if (repo =~ m/[,"]/) {
+         $repo =~ s/"/\\"/g;
+         $repo = qq|"$repo"|
+      };
       my $type = $self->config->{repo}->{$repo}->{type};
       my $mirrored = $self->config->{repo}->{$repo}->{url} ? 'Yes' : 'No';
       print "\n", join( ',', $type, $mirrored, $repo );
@@ -608,6 +612,7 @@ sub list {
   if ($o{format} eq 'json') {
     my @list;
     for my $repo (@repos) {
+      $repo =~ s/"/\\"/g;
       my $type = $self->config->{repo}->{$repo}->{type};
       my $mirrored = $self->config->{repo}->{$repo}->{url} ? 'true' : 'false';
       push @list, qq|{"type":"$type","mirrored":$mirrored,"name":"$repo"}|;
