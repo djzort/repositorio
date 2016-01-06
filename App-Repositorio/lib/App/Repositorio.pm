@@ -160,12 +160,12 @@ sub go {
   }
 
   END {
-    if (defined $lockfh && fileno $lockfh) {
+    if ( defined $lockfh && fileno $lockfh ) {
       flock( $lockfh, LOCK_EX );
-      close $lockfh
+      close $lockfh;
     }
-    if ($lockf and -f $lockf) {
-      unlink $lockf
+    if ( $lockf and -f $lockf ) {
+      unlink $lockf;
     }
   }
 
@@ -198,14 +198,14 @@ sub _validate_config {
   # required params for each repo config
   for my $repo (@repos) {
 
-    # Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
-    if (my $url = $self->config->{'repo'}->{$repo}->{'url'}) {
+# Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
+    if ( my $url = $self->config->{'repo'}->{$repo}->{'url'} ) {
       my $urles = ref($url) eq 'ARRAY' ? $url : [$url];
       $self->config->{'repo'}->{$repo}->{'url'} = $urles;
     }
 
     # type local and arch are required params for ALL repos
-    REPO_PARAM_LOOP:
+  REPO_PARAM_LOOP:
     for my $param (qw/type local arch/) {
       $self->logger->log_and_croak(
         level   => 'error',
@@ -215,7 +215,7 @@ sub _validate_config {
 
       # Data validation for specific types
 
-      # Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
+# Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
       if ( $param eq 'arch' ) {
 
 # We allow identical options which we use for arch, lets end up with an array regardless
@@ -253,7 +253,7 @@ sub _get_plugin {
   my $self = shift;
   my %o    = validate_with(
     params => \@_,
-    spec => {
+    spec   => {
       type    => { type    => SCALAR, },
       options => { options => HASHREF, },
     }
@@ -281,7 +281,7 @@ sub _get_repo_dir {
   my $self = shift;
   my %o    = validate_with(
     params => \@_,
-    spec => {
+    spec   => {
       repo => { type => SCALAR },
       tag  => { type => SCALAR, default => 'head', },
     }
@@ -341,7 +341,7 @@ sub add_file {
   my $self = shift;
   my %o    = validate_with(
     params => @_,
-    spec => {
+    spec   => {
       'repo'  => { type => SCALAR,  callbacks => \%check_repo },
       'arch'  => { type => SCALAR },
       'file'  => { type => SCALAR | ARRAYREF },
@@ -393,7 +393,7 @@ sub del_file {
   my $self = shift;
   my %o    = validate_with(
     params => \@_,
-    spec => {
+    spec   => {
       'repo' => { type => SCALAR, callbacks => \%check_repo },
       'arch' => { type => SCALAR },
       'file' => { type => SCALAR | ARRAYREF },
@@ -411,7 +411,7 @@ sub del_file {
     options => $options,
   );
 
-  $plugin->make_dir($options->{dir}) unless -d $options->{dir};
+  $plugin->make_dir( $options->{dir} ) unless -d $options->{dir};
   $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->del_file( $o{'arch'}, $o{'file'} );
   $self->_unlock( $options->{repo} );
@@ -444,7 +444,7 @@ sub clean {
   my $self = shift;
   my %o    = validate_with(
     params => \@_,
-    spec => {
+    spec   => {
       repo  => { type => SCALAR,  callbacks => \%check_repo },
       arch  => { type => SCALAR,  optional  => 1 },
       regex => { type => BOOLEAN, optional  => 1 },
@@ -494,7 +494,7 @@ sub _clean {
     options => $options,
   );
 
-  $plugin->make_dir($options->{dir}) unless -d $options->{dir};
+  $plugin->make_dir( $options->{dir} ) unless -d $options->{dir};
   $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->clean();
   $self->_unlock( $options->{repo} );
@@ -526,7 +526,7 @@ sub init {
   my $self = shift;
   my %o    = validate_with(
     params => \@_,
-    spec => {
+    spec   => {
       repo => { type => SCALAR, callbacks => \%check_repo },
       arch => { type => SCALAR, optional  => 1 },
     }
@@ -556,7 +556,7 @@ sub init {
     options => $options,
   );
 
-  $plugin->make_dir($options->{dir}) unless -d $options->{dir};
+  $plugin->make_dir( $options->{dir} ) unless -d $options->{dir};
   $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->init( $o{'arch'} );
   $self->_lock( $options->{repo}, $options->{dir} );
@@ -584,14 +584,18 @@ sub list {
   my $self = shift;
   my %o    = validate_with(
     params => \@_,
-    spec => {
-      format => { type => SCALAR, default => 'default', regex => qw/^(default|json|csv)$/ },
+    spec   => {
+      format => {
+        type    => SCALAR,
+        default => 'default',
+        regex   => qw/^(default|json|csv)$/
+      },
     }
   );
 
-  # perhaps this next section could be more elegant, but doing things manually keeps deps down
+# perhaps this next section could be more elegant, but doing things manually keeps deps down
 
-  if ($o{format} eq 'default') {
+  if ( $o{format} eq 'default' ) {
     print "Repository list:\n";
     printf "|%8s|%8s|%50s|\n", 'Type', 'Mirrored', 'Name';
     for my $repo (@repos) {
@@ -599,24 +603,24 @@ sub list {
       my $mirrored = $self->config->{repo}->{$repo}->{url} ? 'Yes' : 'No';
       print sprintf "|%8s|%8s|%50s|\n", $type, $mirrored, $repo;
     }
-    return 1
+    return 1;
   }
 
-  if ($o{format} eq 'csv') {
+  if ( $o{format} eq 'csv' ) {
     print join( ',', 'Type', 'Mirrored', 'Name' );
     for my $repo (@repos) {
-      if ($repo =~ m/[,"]/) {
-         $repo =~ s/"/\\"/g;
-         $repo = qq|"$repo"|
-      };
+      if ( $repo =~ m/[,"]/ ) {
+        $repo =~ s/"/\\"/g;
+        $repo = qq|"$repo"|;
+      }
       my $type = $self->config->{repo}->{$repo}->{type};
       my $mirrored = $self->config->{repo}->{$repo}->{url} ? 'Yes' : 'No';
       print "\n", join( ',', $type, $mirrored, $repo );
     }
-    return 1
+    return 1;
   }
 
-  if ($o{format} eq 'json') {
+  if ( $o{format} eq 'json' ) {
     my @list;
     for my $repo (@repos) {
       $repo =~ s/"/\\"/g;
@@ -624,8 +628,8 @@ sub list {
       my $mirrored = $self->config->{repo}->{$repo}->{url} ? 'true' : 'false';
       push @list, qq|{"type":"$type","mirrored":$mirrored,"name":"$repo"}|;
     }
-    print '{"repos":[',join(',',@list),"]}\n";
-    return 1
+    print '{"repos":[', join( ',', @list ), "]}\n";
+    return 1;
   }
 
   # shouldnt get here
@@ -664,7 +668,7 @@ sub mirror {
   my $self = shift;
   my %o    = validate_with(
     params => \@_,
-    spec => {
+    spec   => {
       'repo'          => { type => SCALAR,  callbacks => \%check_repo },
       'force'         => { type => BOOLEAN, default   => 0 },
       'ignore-errors' => { type => BOOLEAN, default   => 0 },
@@ -720,7 +724,7 @@ sub _mirror {
     type    => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     options => $options
   );
-  $plugin->make_dir($options->{dir}) unless -d $options->{dir};
+  $plugin->make_dir( $options->{dir} ) unless -d $options->{dir};
   $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->mirror();
   $self->_unlock( $options->{repo} );
@@ -767,7 +771,7 @@ sub tag {
   my $self = shift;
   my %o    = validate_with(
     params => \@_,
-    spec => {
+    spec   => {
       'repo'    => { type => SCALAR,  callbacks => \%check_repo },
       'tag'     => { type => SCALAR },
       'src-tag' => { type => SCALAR,  default   => 'head' },
@@ -789,7 +793,7 @@ sub tag {
     options => $options,
   );
 
-  $plugin->make_dir($options->{dir}) unless -d $options->{dir};
+  $plugin->make_dir( $options->{dir} ) unless -d $options->{dir};
   $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->tag(
     src_dir => $self->_get_repo_dir( repo => $o{'repo'}, tag => $o{'src-tag'} ),

@@ -35,70 +35,72 @@ sub get_metadata {
   my @metadata_files =
     ( { type => 'repomd', location => 'repodata/repomd.xml' } );
 
-  URL_LOOP:
-  for my $url (@{$self->{url}}) {
+URL_LOOP:
+  for my $url ( @{ $self->{url} } ) {
 
-  for my $m (@metadata_files) {
-    my $type     = $m->{'type'};
-    my $location = $m->{'location'};
-    my $m_url    = join( '/', $url, $location );
-    $m_url =~ s/%ARCH%/$arch/;
-    my $dest_file = File::Spec->catfile( $base_dir, $location );
-    my $dest_dir = dirname($dest_file);
+    for my $m (@metadata_files) {
+      my $type     = $m->{'type'};
+      my $location = $m->{'location'};
+      my $m_url    = join( '/', $url, $location );
+      $m_url =~ s/%ARCH%/$arch/;
+      my $dest_file = File::Spec->catfile( $base_dir, $location );
+      my $dest_dir = dirname($dest_file);
 
-    # Make sure dir exists
-    $self->make_dir($dest_dir);
+      # Make sure dir exists
+      $self->make_dir($dest_dir);
 
-    # Check if we have the local file
-    my $download;
-    if ( $type eq 'repomd' ) {
-      $download++;
-    }
-    elsif (
-      !$self->validate_file(
-        filename => $dest_file,
-        check    => $m->{'validate'}->{'type'},
-        value    => $m->{'validate'}->{'value'},
-      )
-      )
-    {
-      $download++;
-    }
-
-    # Grab the file
-    if ($download) {
-        eval { $self->download_binary_file( url => $m_url, dest => $dest_file ) };
-        if ($@) {
-            next URL_LOOP unless $self->ok_url;
-            if ($self->ignore_errors) {
-                $self->logger->debug(%{$@});
-                return
-            }
-            $self->logger->log_and_croak(%{$@});
-        }
-        $self->ok_url($url) unless $self->ok_url
-    }
-    else {
-      $self->logger->debug(
-        sprintf(
-          'get_metadata; repo: %s arch: %s file: %s skipping as its deemed up to date',
-          $self->repo(), $arch, $location
+      # Check if we have the local file
+      my $download;
+      if ( $type eq 'repomd' ) {
+        $download++;
+      }
+      elsif (
+        !$self->validate_file(
+          filename => $dest_file,
+          check    => $m->{'validate'}->{'type'},
+          value    => $m->{'validate'}->{'value'},
         )
-      );
-    }
+        )
+      {
+        $download++;
+      }
 
-    # Parse the xml and retrieve the primary file location
-    if ( $type eq 'repomd' ) {
-      my $data = $self->parse_repomd($dest_file);
-      push @metadata_files, @{$data};
-    }
+      # Grab the file
+      if ($download) {
+        eval {
+          $self->download_binary_file( url => $m_url, dest => $dest_file );
+        };
+        if ($@) {
+          next URL_LOOP unless $self->ok_url;
+          if ( $self->ignore_errors ) {
+            $self->logger->debug( %{$@} );
+            return;
+          }
+          $self->logger->log_and_croak( %{$@} );
+        }
+        $self->ok_url($url) unless $self->ok_url;
+      }
+      else {
+        $self->logger->debug(
+          sprintf(
+            'get_metadata; repo: %s arch: %s file: %s skipping as its deemed up to date',
+            $self->repo(), $arch, $location
+          )
+        );
+      }
 
-    # Parse the primary metadata file
-    if ( $type eq 'primary' ) {
-      $packages = $self->parse_primary($dest_file);
+      # Parse the xml and retrieve the primary file location
+      if ( $type eq 'repomd' ) {
+        my $data = $self->parse_repomd($dest_file);
+        push @metadata_files, @{$data};
+      }
+
+      # Parse the primary metadata file
+      if ( $type eq 'primary' ) {
+        $packages = $self->parse_primary($dest_file);
+      }
     }
-  }
-  last URL_LOOP if $self->ok_url;
+    last URL_LOOP if $self->ok_url;
   }
   return $packages;
 }
@@ -277,10 +279,13 @@ sub get_packages {
         $self->repo(), $arch, $location
       )
     );
-    eval { $count += $self->download_binary_file( url => $p_url, dest => $dest_file ) };
+    eval {
+      $count +=
+        $self->download_binary_file( url => $p_url, dest => $dest_file );
+    };
     if ($@) {
-      $self->logger->log_and_croak(%{$@}) unless $self->ignore_errors;
-      $self->logger->debug(%{$@})
+      $self->logger->log_and_croak( %{$@} ) unless $self->ignore_errors;
+      $self->logger->debug( %{$@} );
     }
   }
   return $count;
@@ -340,8 +345,7 @@ sub add_file {
 
   for my $file ( @${files} ) {
     my $filename = basename($file);
-    my $dest_file =
-      File::Spec->catfile( $package_dir, $filename );
+    my $dest_file = File::Spec->catfile( $package_dir, $filename );
     $self->logger->debug(
       sprintf 'add_file; repo: %s arch: %s file: %s dest_file: %s',
       $self->repo(), $arch, $file, $dest_file );
@@ -436,9 +440,7 @@ sub init_arch {
     );
   }
 
-  my @cmd = (
-    $createrepo_bin, '--basedir', $dir, '--outputdir', $dir, $dir
-  );
+  my @cmd = ( $createrepo_bin, '--basedir', $dir, '--outputdir', $dir, $dir );
 
 # --update will reuse the existing metadata if the file is already defined and size/mtime matches
 # dont do this if we're forcing or the repomd.xml doesnt exist

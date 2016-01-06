@@ -86,33 +86,33 @@ sub find_command_path {
 
 {
 
-# don't try to make them over and over
-my %made;
+  # don't try to make them over and over
+  my %made;
 
-sub make_dir {
-  my $self = shift;
-  my $dir  = shift;
+  sub make_dir {
+    my $self = shift;
+    my $dir  = shift;
 
-  return 1 if $made{$dir};
+    return 1 if $made{$dir};
 
-  if ( -e $dir and ! -d $dir) {
+    if ( -e $dir and !-d $dir ) {
       $self->logger->log_and_croak(
-          level   => 'error',
-          message => "File blocking directory creation: ${dir}"
-      )
+        level   => 'error',
+        message => "File blocking directory creation: ${dir}"
+      );
+    }
+
+    my $dirs = make_path($dir);
+    $self->logger->log_and_croak(
+      level   => 'error',
+      message => "Failed to create path: ${dir}"
+    ) unless -d $dir;
+
+    $made{$dir}++;
+
+    $self->logger->debug("Created path: ${dir}");
+    return 1;
   }
-
-  my $dirs = make_path($dir);
-  $self->logger->log_and_croak(
-    level   => 'error',
-    message => "Failed to create path: ${dir}"
-  ) unless -d $dir;
-
-  $made{$dir}++;
-
-  $self->logger->debug("Created path: ${dir}");
-  return 1
-}
 
 }
 
@@ -228,7 +228,8 @@ sub mirror {
     $self->logger->info(
       sprintf(
         'mirror; starting repo: %s arch: %s from url: (%s) to dir: %s',
-        $self->repo, $arch, join(', ',@{$self->url}), $self->dir
+        $self->repo, $arch, join( ', ', @{ $self->url } ),
+        $self->dir
       )
     );
     my $packages = $self->get_metadata($arch) or return;
@@ -386,12 +387,11 @@ sub tag {
 
   # handle symlink destination
   else {
-    # ensure the parent directory of the symlink exists
-    #Is there a nicer way to right this without resorting to multiple operations on the variable?
-    #Basically, it splits the dest_dir into parts, and then catdirs all the components except the last one.
+# ensure the parent directory of the symlink exists
+#Is there a nicer way to right this without resorting to multiple operations on the variable?
+#Basically, it splits the dest_dir into parts, and then catdirs all the components except the last one.
     my $dest_dir_parent = File::Spec->catdir(
-      ( splice( @{[ File::Spec->splitdir( $o{'dest_dir'} ) ]}, 0, -1 ) )
-    );
+      ( splice( @{ [ File::Spec->splitdir( $o{'dest_dir'} ) ] }, 0, -1 ) ) );
 
     unless ( -d $dest_dir_parent ) {
       $self->logger->log_and_die(
@@ -400,8 +400,9 @@ sub tag {
           "tag; repo: %s couldnt create parent dir for link dst_dir: %s: $!",
           $self->repo(), $o{'dest_dir'}
         ),
-      ) unless make_path($dest_dir_parent) and -d $dest_dir_parent;
-
+        )
+        unless make_path($dest_dir_parent)
+        and -d $dest_dir_parent;
 
     }
 
@@ -443,7 +444,7 @@ sub download_binary_file {
     )
   );
 
-  # HTTP::Tiny's mirror function does not seem to validate the file if its locally present in any way
+# HTTP::Tiny's mirror function does not seem to validate the file if its locally present in any way
   unlink $o{dest} if -f $o{dest};
 
   my $retry_count = 0;
@@ -488,7 +489,7 @@ sub download_binary_file {
           'download_binary_file; repo: %s url: %s failed and exhausted all retries',
           $self->repo(), $o{url},
         )
-      }
+      };
     }
   }
 }
