@@ -4,3 +4,4 @@
 - speed limit downloads (see https://github.com/shoichikaji/HTTP-Tiny-Bandwidth, not yet in CPAN)
 - document how to have apache (and others) ask caches not do cache the contents of repodata/ (Yum)
 - document how to have squid (and others) never cache the contents of repodata/ (Yum)
+- move HTTP::Tiny out of Base and make protocol handling modular
