@@ -198,7 +198,14 @@ sub _validate_config {
   # required params for each repo config
   for my $repo (@repos) {
 
-    #type local and arch are required params for ALL repos
+    # Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
+    if (my $url = $self->config->{'repo'}->{$repo}->{'url'}) {
+      my $urles = ref($url) eq 'ARRAY' ? $url : [$url];
+      $self->config->{'repo'}->{$repo}->{'url'} = $urles;
+    }
+
+    # type local and arch are required params for ALL repos
+    REPO_PARAM_LOOP:
     for my $param (qw/type local arch/) {
       $self->logger->log_and_croak(
         level   => 'error',
@@ -208,14 +215,14 @@ sub _validate_config {
 
       # Data validation for specific types
 
-# Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
+      # Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
       if ( $param eq 'arch' ) {
 
 # We allow identical options which we use for arch, lets end up with an array regardless
         my $arch = $self->config->{'repo'}->{$repo}->{'arch'};
         my $arches = ref($arch) eq 'ARRAY' ? $arch : [$arch];
         $self->config->{'repo'}->{$repo}->{'arch'} = $arches;
-        next;
+        next REPO_PARAM_LOOP;
       }
 
       # Allowed types
@@ -234,7 +241,7 @@ sub _validate_config {
             $self->config->{repo}->{$repo}->{$param},
           );
         }
-        next;
+        next REPO_PARAM_LOOP;
       }
     }
   }
@@ -598,7 +605,7 @@ sub list {
   if ($o{format} eq 'csv') {
     print join( ',', 'Type', 'Mirrored', 'Name' );
     for my $repo (@repos) {
-      if (repo =~ m/[,"]/) {
+      if ($repo =~ m/[,"]/) {
          $repo =~ s/"/\\"/g;
          $repo = qq|"$repo"|
       };

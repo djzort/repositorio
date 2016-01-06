@@ -29,6 +29,7 @@ has logger =>
 has repo          => ( is => 'ro', required => 1 );
 has dir           => ( is => 'ro', required => 1 );
 has url           => ( is => 'ro', optional => 1 );
+has ok_url        => ( is => 'rw', optional => 1 );
 has checksums     => ( is => 'ro', optional => 1 );
 has force         => ( is => 'ro', optional => 1 );
 has arches        => ( is => 'ro', required => 1 );
@@ -83,9 +84,16 @@ sub find_command_path {
   return;
 }
 
+{
+
+# don't try to make them over and over
+my %made;
+
 sub make_dir {
   my $self = shift;
   my $dir  = shift;
+
+  return 1 if $made{$dir};
 
   if ( -e $dir and ! -d $dir) {
       $self->logger->log_and_croak(
@@ -100,8 +108,12 @@ sub make_dir {
     message => "Failed to create path: ${dir}"
   ) unless -d $dir;
 
+  $made{$dir}++;
+
   $self->logger->debug("Created path: ${dir}");
   return 1
+}
+
 }
 
 sub remove_dir {
@@ -215,8 +227,8 @@ sub mirror {
   for my $arch ( @{ $self->arches() } ) {
     $self->logger->info(
       sprintf(
-        'mirror; starting repo: %s arch: %s from url: %s to dir: %s',
-        $self->repo, $arch, $self->url, $self->dir
+        'mirror; starting repo: %s arch: %s from url: (%s) to dir: %s',
+        $self->repo, $arch, join(', ',@{$self->url}), $self->dir
       )
     );
     my $packages = $self->get_metadata($arch) or return;
@@ -431,7 +443,7 @@ sub download_binary_file {
     )
   );
 
-# HTTP::Tiny's mirror function does not seem to validate the file if its locally present in any way
+  # HTTP::Tiny's mirror function does not seem to validate the file if its locally present in any way
   unlink $o{dest} if -f $o{dest};
 
   my $retry_count = 0;
@@ -470,21 +482,17 @@ sub download_binary_file {
       ) if $retry_count;
     }
     else {
-      my %bad = (
+      die {
         level   => 'error',
         message => sprintf(
           'download_binary_file; repo: %s url: %s failed and exhausted all retries',
           $self->repo(), $o{url},
         )
-      );
-      if ( $self->ignore_errors ) {
-        $self->logger->debug(%bad);
-        return 0 # needs to be a number
       }
-      $self->logger->log_and_croak(%bad)
-
     }
   }
 }
 
 1;
+
+# vim: softtabstop=2 tabstop=2 shiftwidth=2 ft=perl expandtab smarttab

@@ -34,10 +34,14 @@ sub get_metadata {
 
   my @metadata_files =
     ( { type => 'repomd', location => 'repodata/repomd.xml' } );
+
+  URL_LOOP:
+  for my $url (@{$self->{url}}) {
+
   for my $m (@metadata_files) {
     my $type     = $m->{'type'};
     my $location = $m->{'location'};
-    my $m_url    = join( '/', ( $self->url, $location ) );
+    my $m_url    = join( '/', $url, $location );
     $m_url =~ s/%ARCH%/$arch/;
     my $dest_file = File::Spec->catfile( $base_dir, $location );
     my $dest_dir = dirname($dest_file);
@@ -63,8 +67,16 @@ sub get_metadata {
 
     # Grab the file
     if ($download) {
-      return
-        unless $self->download_binary_file( url => $m_url, dest => $dest_file );
+        eval { $self->download_binary_file( url => $m_url, dest => $dest_file ) };
+        if ($@) {
+            next URL_LOOP unless $self->ok_url;
+            if ($self->ignore_errors) {
+                $self->logger->debug(%{$@});
+                return
+            }
+            $self->logger->log_and_croak(%{$@});
+        }
+        $self->ok_url($url) unless $self->ok_url
     }
     else {
       $self->logger->debug(
@@ -85,6 +97,8 @@ sub get_metadata {
     if ( $type eq 'primary' ) {
       $packages = $self->parse_primary($dest_file);
     }
+  }
+  last URL_LOOP if $self->ok_url;
   }
   return $packages;
 }
@@ -231,7 +245,7 @@ sub get_packages {
     my $name     = $package->{'name'};
     my $location = $package->{'location'};
 
-    my $p_url = join( '/', ( $self->url, $location ) );
+    my $p_url = join( '/', ( $self->ok_url, $location ) );
     $p_url =~ s/%ARCH%/$arch/;
     my $dest_file = File::Spec->catfile( $base_dir, $location );
     my $dest_dir = dirname($dest_file);
@@ -263,7 +277,11 @@ sub get_packages {
         $self->repo(), $arch, $location
       )
     );
-    $count += $self->download_binary_file( url => $p_url, dest => $dest_file );
+    eval { $count += $self->download_binary_file( url => $p_url, dest => $dest_file ) };
+    if ($@) {
+      $self->logger->log_and_croak(%{$@}) unless $self->ignore_errors;
+      $self->logger->debug(%{$@})
+    }
   }
   return $count;
 }
@@ -451,3 +469,5 @@ sub type {
 }
 
 1;
+
+# vim: softtabstop=2 tabstop=2 shiftwidth=2 ft=perl expandtab smarttab

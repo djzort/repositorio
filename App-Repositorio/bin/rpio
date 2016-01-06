@@ -2,7 +2,6 @@
 # PODNAME: rpio
 # ABSTRACT: Repositorio Repository Management
 
-
 use strict;
 use warnings;
 
@@ -264,7 +263,11 @@ The directory relative to $data_dir
 
 =item url
 
-The url to mirror from
+The url to mirror from. If more than one is present, each will be tried in order.
+
+The first which seems to return OK metadata will be used for the remainder of this invocation for this repo.
+
+(Currently there are no smarts to share url health between repo config instances)
 
 =item ca
 
