@@ -355,6 +355,14 @@ sub add_file {
   $self->make_dir($package_dir) unless -d $package_dir;
 
   for my $file ( @${files} ) {
+
+    $self->logger->log_and_croak(
+        level   => 'error',
+        message => sprintf
+          'add_file; repo: %s file: %s error: does not exist',
+        $self->repo(), $file
+    ) unless -f $file;
+
     my $filename = basename($file);
     my $dest_file = File::Spec->catfile( $package_dir, $filename );
     $self->logger->debug(
