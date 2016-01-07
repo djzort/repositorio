@@ -226,7 +226,7 @@ sub parse_primary {
   $self->logger->debug(
     sprintf( 'parse_primary: file: %s took: %s seconds', $dest_file, $elapsed )
   );
-  return $packages;
+  return [ sort { $a->{name} cmp $b->{name} } @$packages ];
 }
 
 sub get_packages {
