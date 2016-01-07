@@ -202,7 +202,38 @@ sub _validate_config {
     if ( my $url = $self->config->{'repo'}->{$repo}->{'url'} ) {
       my $urles = ref($url) eq 'ARRAY' ? $url : [$url];
       $self->config->{'repo'}->{$repo}->{'url'} = $urles;
+
+      # FIXME plugins should be able to check their config, rather than doing it here
+      my @missing;
+      for my $param (qw/ca cert key/) {
+        if (my $file = $self->config->{repo}->{$repo}->{$param}) {
+          $self->logger->log_and_croak(
+            level   => 'error',
+            message => sprintf "repo: %s param: %s value: %s error: not a file\n",
+            $repo, $param, $file
+          ) unless -f $file;
+        }
+        else {
+          push @missing, $param;
+        }
+      }
+
+      $self->logger->log_and_croak(
+        level   => 'error',
+        message => sprintf "repo: %s missing param: %s\n",
+        $repo, join(',', @missing)
+      ) if (@missing < 3 and @missing > 0);
+
     }
+    else {
+
+      $self->logger->log_and_croak(
+        level   => 'error',
+        message => sprintf "repo: %s error: ca, cert and key only valid for url repos\n",
+        $repo
+      ) if (grep {$_ =~ m/^(ca|cert|key)$/ } keys %{$self->config->{'repo'}->{$repo}})
+
+    } # if my $url
 
     # type local and arch are required params for ALL repos
   REPO_PARAM_LOOP:

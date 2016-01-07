@@ -469,8 +469,8 @@ sub download_binary_file {
 
     $self->logger->debug(
       sprintf(
-        'download_binary_file; repo: %s url: %s failed with status: %s reason: %s',
-        $self->repo(), $o{url}, $res->{'status'}, $res->{'reason'},
+        'download_binary_file; repo: %s url: %s failed with status: %s reason: %s content: %s',
+        $self->repo(), $o{url}, $res->{'status'}, $res->{'reason'}, $res->{'content'} || 'NILL',
       )
     );
     $retry_count++;
