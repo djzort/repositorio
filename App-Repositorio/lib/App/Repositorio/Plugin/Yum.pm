@@ -42,7 +42,7 @@ URL_LOOP:
       my $type     = $m->{'type'};
       my $location = $m->{'location'};
       my $m_url    = join( '/', $url, $location );
-      $m_url =~ s/%ARCH%/$arch/;
+      $m_url =~ s/%ARCH%/\Q$arch\E/g;
       my $dest_file = File::Spec->catfile( $base_dir, $location );
       my $dest_dir = dirname($dest_file);
 
@@ -249,7 +249,7 @@ sub get_packages {
     my $location = $package->{'location'};
 
     my $p_url = join( '/', ( $self->ok_url, $location ) );
-    $p_url =~ s/%ARCH%/$arch/;
+    $p_url =~ s/%ARCH%/\Q$arch\E/g;
     my $dest_file = File::Spec->catfile( $base_dir, $location );
     my $dest_dir = dirname($dest_file);
 
