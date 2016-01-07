@@ -5,6 +5,7 @@ Refinements
 - move all log_and_croak type functions up to Repositorio.pm, just log info and debug in plugins, then croak() and let upstream decide.
 - move HTTP::Tiny out of Base and make protocol handling modular
 - tag names should be alpha numeric, underscores and hyphens(?)
+- make --arch optional if only one arch configured for the repo (globally)
 
 Documentation
 - document how to have apache (and others) ask caches not do cache the contents of repodata/ (Yum)
