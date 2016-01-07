@@ -46,6 +46,9 @@ or pod2usage(-verbose=>2, -output => \*STDERR);
 pod2usage(-verbose=>2, -output => \*STDERR) if $help;
 pod2usage(-verbose=>1, -output => \*STDERR) unless $app_options->{'action'};
 
+# allow comma list and/or multiply --file definitions
+$app_options->{'file'} = [ split(',',join(',',@{$app_options->{'file'}})) ];
+
 my $conf_o = Config::General->new(
     -ConfigFile         => $config_file,
     -UseApacheInclude   => 1,
@@ -146,12 +149,12 @@ Stay tuned for more!
       requires:
         --repo $repository_name
         --arch $arch
-        --file $path_to_file (--file can be supplied multiple times)
+        --file $path_to_file (--file can be comma delimited or supplied multiple times)
     del-file  Remove files from a custom repository
       requires:
         --repo $repository_name
         --arch $arch
-        --file $path_to_file (--file can be supplied multiple times)
+        --file $path_to_file (--file can be comma delimited or supplied multiple times)
 
   Script Options:
     --config-file    Path to config-file, defaults to /etc/repositorio.conf
