@@ -17,6 +17,7 @@ use App::Repositorio::Logger;
 
 my $config_file = '/etc/repositorio.conf';
 my $log_level;
+my $verbose;
 my $help;
 my $app_options = {};
 
@@ -33,6 +34,7 @@ GetOptions(
   'src-tag=s'  => \$app_options->{'src-tag'},
   'symlink'    => \$app_options->{'symlink'},
   'tag=s'      => \$app_options->{'tag'},
+  'verbose|v'  => \$verbose,
   'ignore-errors' => \$app_options->{'ignore-errors'},
   # Script options
   'config-file|C=s' => \$config_file,
@@ -61,6 +63,7 @@ $config->{log_file_level} ||= 'info'; # FIXME document this
 $config->{screen_level}   ||= 'notice';
 # We allow the cli to override the config for ScreenLevel
 $config->{screen_level} = $log_level if $log_level;
+$config->{screen_level} = 'debug' if $verbose;
 
 # Setup Logging
 my @log_outputs = (
@@ -153,6 +156,7 @@ Stay tuned for more!
   Script Options:
     --config-file    Path to config-file, defaults to /etc/repositorio.conf
     --log-level      Change the stdout log level (overrides config, default: notice)
+    --versbose       Synonym for --log-level=debug
     --help           This helpful message
 
 =head1 EXAMPLES
