@@ -60,7 +60,7 @@ sub get_gzip_contents {
     {
       my $fh = IO::Zlib->new( $file, 'rb' );
 
-      #XXX for some reason this does not work
+      #XXX IO::Zlib seems to ignore $/
       #local $/ = undef;
       #my $contents = <$fh>;
       #return $contents;

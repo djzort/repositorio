@@ -147,7 +147,7 @@ sub parse_repomd {
   my $self = shift;
   my $file = shift;
 
-  # XXX TODO rework this with XML::LibXML as its far faster
+  # FIXME rework this with XML::LibXML as its far faster
   my $twig = XML::Twig->new( TwigRoots => { data => 1 } );
   $twig->parsefile($file);
 
