@@ -114,6 +114,7 @@ sub read_metadata {
 
   my @metadata_files =
     ( { type => 'repomd', location => 'repodata/repomd.xml' } );
+
   for my $m (@metadata_files) {
     my $type      = $m->{'type'};
     my $location  = $m->{'location'};
@@ -425,7 +426,7 @@ sub init_arch {
   $self->make_dir($dir);
   $self->make_dir( File::Spec->catdir( $dir, $self->packages_dir() ) );
 
-  #XXX add gpg
+  #FIXME add gpg
 
   #TODO perhaps replace createrepo with pure perl version at some stage
   my $createrepo_bin = $self->find_command_path('createrepo');
