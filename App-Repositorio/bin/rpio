@@ -156,7 +156,7 @@ Stay tuned for more!
   Script Options:
     --config-file    Path to config-file, defaults to /etc/repositorio.conf
     --log-level      Change the stdout log level (overrides config, default: notice)
-    --versbose       Synonym for --log-level=debug
+    --verbose        Synonym for --log-level=debug
     --help           This helpful message
 
 =head1 EXAMPLES
