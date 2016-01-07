@@ -19,8 +19,11 @@ use App::Repositorio::Logger;
 # VERSION
 
 has config => ( is => 'ro' );
-has logger =>
-  ( is => 'ro', lazy => 1, default => sub { App::Repositorio::Logger->new() } );
+has logger => (
+  is => 'ro',
+  lazy => 1,
+  default => sub { App::Repositorio::Logger->new() }
+);
 
 # these are for convenience
 my @repos;
@@ -222,7 +225,18 @@ sub _validate_config {
         level   => 'error',
         message => sprintf "repo: %s missing param: %s\n",
         $repo, join(',', @missing)
-      ) if (@missing < 3 and @missing > 0);
+      ) if (@missing > 0 and @missing < 3 );
+
+      my @filter;
+      for my $param (qw/include_filename include_package exclude_filename exclude_package/) {
+        push @filter, $param if $self->config->{repo}->{$repo}->{$param};
+      }
+
+      $self->logger->log_and_croak(
+        level   => 'error',
+        message => sprintf "repo: %s param: %s error: only one allowed\n",
+        $repo, join(',', @filter)
+      ) if (@filter > 1)
 
     }
     else {
@@ -745,6 +759,10 @@ sub _mirror {
     checksums => $o{'checksums'},
     backend   => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     dir       => $self->_get_repo_dir( repo => $o{'repo'} ),
+    include_filename => $self->config->{'repo'}->{ $o{'repo'} }->{'include_filename'} || undef,
+    include_package => $self->config->{'repo'}->{ $o{'repo'} }->{'include_package'} || undef,
+    exclude_filename => $self->config->{'repo'}->{ $o{'repo'} }->{'exclude_filename'} || undef,
+    exclude_package => $self->config->{'repo'}->{ $o{'repo'} }->{'exclude_package'} || undef,
     ssl_ca    => $self->config->{'repo'}->{ $o{'repo'} }->{'ca'} || undef,
     ssl_cert  => $self->config->{'repo'}->{ $o{'repo'} }->{'cert'} || undef,
     ssl_key   => $self->config->{'repo'}->{ $o{'repo'} }->{'key'} || undef,

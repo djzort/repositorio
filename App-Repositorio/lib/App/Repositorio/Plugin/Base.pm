@@ -14,6 +14,7 @@ use Data::Dumper;
 use Digest::SHA;
 use File::Find qw(find);
 use File::Path qw(make_path remove_tree);
+use File::Basename qw(basename);
 use File::Spec;
 use HTTP::Tiny;
 use IO::Zlib;
@@ -24,20 +25,28 @@ use Time::HiRes qw(gettimeofday tv_interval);
 
 # VERSION
 
-has logger =>
-  ( is => 'ro', lazy => 1, default => sub { App::Repositorio::Logger->new() } );
-has repo          => ( is => 'ro', required => 1 );
-has dir           => ( is => 'ro', required => 1 );
-has url           => ( is => 'ro', optional => 1 );
-has ok_url        => ( is => 'rw', optional => 1 );
-has checksums     => ( is => 'ro', optional => 1 );
-has force         => ( is => 'ro', optional => 1 );
+has logger => (
+  is => 'ro',
+  lazy => 1,
+  default => sub { App::Repositorio::Logger->new() }
+);
+
 has arches        => ( is => 'ro', required => 1 );
+has checksums     => ( is => 'ro', optional => 1 );
+has dir           => ( is => 'ro', required => 1 );
+has force         => ( is => 'ro', optional => 1 );
+has include_filename => ( is => 'ro', optional => 1 );
+has include_package  => ( is => 'ro', optional => 1 );
+has exclude_filename => ( is => 'ro', optional => 1 );
+has exclude_package  => ( is => 'ro', optional => 1 );
 has http          => ( is => 'lazy' );
+has ignore_errors => ( is => 'ro', default  => 0 );
+has ok_url        => ( is => 'rw', optional => 1 );
+has repo          => ( is => 'ro', required => 1 );
 has ssl_ca        => ( is => 'ro', optional => 1 );
 has ssl_cert      => ( is => 'ro', optional => 1 );
 has ssl_key       => ( is => 'ro', optional => 1 );
-has ignore_errors => ( is => 'ro', default  => 0 );
+has url           => ( is => 'ro', optional => 1 );
 
 sub _build_http {
   my $self = shift;
@@ -492,6 +501,34 @@ sub download_binary_file {
       };
     }
   }
+}
+
+sub filter {
+  my $self = shift;
+  my $package = shift;
+
+  my $return = 0;
+
+  if (my $regex = $self->include_filename ) {
+    my $filename = basename($package->{location});
+    $return = $filename =~ m/$regex/ ? 0 : 1
+  }
+
+  if (my $regex = $self->include_package ) {
+    $return = $package->{package} =~ m/$regex/ ? 0 : 1
+  }
+
+  if (my $regex = $self->exclude_filename ) {
+    my $filename = basename($package->{location});
+    $return = $filename =~ m/$regex/ ? 1 : 0
+  }
+
+  if (my $regex = $self->exclude_package ) {
+    $return = $package->{package} =~ m/$regex/ ? 1 : 0
+  }
+
+  return $return
+
 }
 
 1;

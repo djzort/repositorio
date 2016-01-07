@@ -248,6 +248,16 @@ sub get_packages {
     my $name     = $package->{'name'};
     my $location = $package->{'location'};
 
+    if ($self->filter($package)) {
+      $self->logger->debug(
+        sprintf(
+          'get_packages; repo: %s arch: %s package: %s skipping due to filter',
+          $self->repo(), $arch, $location
+        )
+      );
+      next
+    }
+
     my $p_url = join( '/', ( $self->ok_url, $location ) );
     $p_url =~ s/%ARCH%/\Q$arch\E/g;
     my $dest_file = File::Spec->catfile( $base_dir, $location );

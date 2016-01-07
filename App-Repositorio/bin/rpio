@@ -273,13 +273,43 @@ The first which seems to return OK metadata will be used for the remainder of th
 
 An optional ca cert file used when mirroring from upstream https (ie like Redhats cdn network)
 
+(only valid when I<url> is present)
+
 =item cert
 
 An optional cert file used when mirroring from upstream https (ie like Redhats cdn network)
 
+(only valid when I<url> is present)
+
 =item key
 
 An optional cert key file used when mirroring from upstream https (ie like Redhats cdn network)
+
+(only valid when I<url> is present)
+
+=item include_filename
+
+A regex applied to package filenames, if true the file is downloaded
+
+(only valid when I<url> is present)
+
+=item include_package
+
+A regex applied to package metada name, if true the file is downloaded
+
+(only valid when I<url> is present)
+
+=item exclude_filename
+
+A regex applied to package filenames, if true the file is NOT downloaded
+
+(only valid when I<url> is present)
+
+=item exclude_package
+
+A regex applied to package metada name, if true the file is NOT downloaded
+
+(only valid when I<url> is present)
 
 =back
 
