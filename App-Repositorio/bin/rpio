@@ -47,7 +47,8 @@ pod2usage(-verbose=>2, -output => \*STDERR) if $help;
 pod2usage(-verbose=>1, -output => \*STDERR) unless $app_options->{'action'};
 
 # allow comma list and/or multiply --file definitions
-$app_options->{'file'} = [ split(',',join(',',@{$app_options->{'file'}})) ];
+$app_options->{'file'} = [ split(',',join(',',@{$app_options->{'file'}})) ]
+  if $app_options->{'file'};
 
 my $conf_o = Config::General->new(
     -ConfigFile         => $config_file,
