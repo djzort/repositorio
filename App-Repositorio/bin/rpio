@@ -146,6 +146,13 @@ Stay tuned for more!
     init      Initialise a custom repository
       requires:
         --repo $repository_name
+    diff      Difference between two tags (via metadata)
+      requires:
+        --repo $repository_name
+        --arch $arch
+        --tag  $tag_name
+      optional:
+        --src-tag $tag_name (defaults to 'head')
     add-file  Add files to a custom repository
       requires:
         --repo $repository_name
@@ -243,9 +250,13 @@ Defaults to 'notice'
 
 =item B<hard_tag_regex>
 
-This option will use the repository config value if present otherwise the global value if present eg:
+If present, tag names must match this regex in order to be created.
+
+This can be applied globally and per repository, in which case the repository takes precedence.
 
   hard_tag_regex = ^release_\d{8}$
+
+Note: this regex is not applied against symlink tags
 
 =item B<Repository Config>
 

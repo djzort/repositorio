@@ -10,7 +10,6 @@ use namespace::clean;
 
 use App::Repositorio::Logger;
 use Carp;
-use Data::Dumper;
 use Digest::SHA;
 use File::Find qw(find);
 use File::Path qw(make_path remove_tree);

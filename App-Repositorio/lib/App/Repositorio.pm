@@ -107,6 +107,7 @@ sub go {
   my $dispatch = {
     'add-file' => \&add_file,
     'del-file' => \&del_file,
+    'diff'     => \&diff,
     'clean'    => \&clean,
     'init'     => \&init,
     'list'     => \&list,
@@ -396,7 +397,6 @@ sub add_file {
   my $options = {
     repo    => $o{'repo'},
     arches  => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
-    backend => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
     force   => $o{'force'},
   };
@@ -447,7 +447,6 @@ sub del_file {
   my $options = {
     repo    => $o{'repo'},
     arches  => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
-    backend => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
     force   => $o{'force'},
   };
@@ -460,6 +459,81 @@ sub del_file {
   $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->del_file( $o{'arch'}, $o{'file'} );
   $self->_unlock( $options->{repo} );
+}
+
+=item B<diff()>
+
+Action: diff
+
+Description: Displays the difference between two tags in the same repo
+
+Options:
+
+=over 4
+
+=item repo
+
+The name of the repository as reflected in the config.
+
+=item arch
+
+The arch that should be examined.
+
+=item src-tag
+
+The source tag to use for this operation, by default this is 'head'
+The source tag must pre exist.
+
+=item dest-tag
+
+The destination tag to use for this operation.
+The source tag must pre exist.
+
+=back
+
+=cut
+
+sub diff {
+  my $self = shift;
+  my %o    = validate_with(
+    params => \@_,
+    spec   => {
+      'repo'    => { type => SCALAR, callbacks => \%check_repo },
+      'tag'     => { type => SCALAR },
+      'src-tag' => { type => SCALAR, default => 'head' },
+      'arch'    => { type => SCALAR },
+    },
+  );
+  my $options = {
+    repo    => $o{'repo'},
+    arches  => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
+    dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
+  };
+  my $plugin = $self->_get_plugin(
+    type    => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
+    options => $options,
+  );
+
+  my $result = $plugin->diff(
+    src_dir  => $self->_get_repo_dir( repo => $o{'repo'}, tag => $o{'src-tag'} ),
+    src_tag  => $o{'src-tag'},
+    dest_dir => $self->_get_repo_dir( repo => $o{'repo'}, tag => $o{'tag'} ),
+    dest_tag => $o{'tag'},
+    arch     => $o{'arch'}
+  );
+
+  printf "|%20s|%20s|\n", $o{'src-tag'}, $o{'tag'};
+  my %files = (
+              (map {+($_ => 'src-tag')} @{$result->{$o{'src-tag'}}}),
+              (map {+($_ => 'dest-tag')} @{$result->{$o{'tag'}}})
+              );
+
+  for my $r (sort keys %files) {
+    printf "|%20s|%20s|\n",
+         ($files{$r} eq 'src-tag' ? $r : ''),
+         ($files{$r} eq 'dest-tag' ? $r : '')
+  }
+
 }
 
 =item B<clean()>
@@ -530,7 +604,6 @@ sub _clean {
   my $options = {
     repo    => $o{'repo'},
     arches  => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
-    backend => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
     force   => $o{'force'},
   };
@@ -592,7 +665,6 @@ sub init {
   my $options = {
     repo    => $o{'repo'},
     arches  => $repo_config->{'arch'},
-    backend => $repo_config->{'type'},
     dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
   };
 
@@ -757,7 +829,6 @@ sub _mirror {
     arches    => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
     url       => $self->config->{'repo'}->{ $o{'repo'} }->{'url'},
     checksums => $o{'checksums'},
-    backend   => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     dir       => $self->_get_repo_dir( repo => $o{'repo'} ),
     include_filename => $self->config->{'repo'}->{ $o{'repo'} }->{'include_filename'} || undef,
     include_package => $self->config->{'repo'}->{ $o{'repo'} }->{'include_package'} || undef,
@@ -832,7 +903,6 @@ sub tag {
   my $options = {
     repo    => $o{'repo'},
     arches  => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
-    backend => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
     dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
     force   => $o{'force'},
   };
@@ -845,8 +915,8 @@ sub tag {
   $plugin->make_dir( $options->{dir} ) unless -d $options->{dir};
   $self->_lock( $options->{repo}, $options->{dir} );
   $plugin->tag(
-    src_dir => $self->_get_repo_dir( repo => $o{'repo'}, tag => $o{'src-tag'} ),
-    src_tag => $o{'src-tag'},
+    src_dir  => $self->_get_repo_dir( repo => $o{'repo'}, tag => $o{'src-tag'} ),
+    src_tag  => $o{'src-tag'},
     dest_dir => $self->_get_repo_dir( repo => $o{'repo'}, tag => $o{'tag'} ),
     dest_tag => $o{'tag'},
     symlink  => $o{'symlink'},

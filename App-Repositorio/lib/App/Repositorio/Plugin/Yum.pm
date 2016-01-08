@@ -13,7 +13,6 @@ use File::Find qw(find);
 use File::Basename qw(basename dirname);
 use IO::Zlib;
 use Params::Validate qw(:all);
-use Data::Dumper qw(Dumper);
 use Time::HiRes qw(gettimeofday tv_interval);
 use XML::Twig;
 use XML::LibXML;
@@ -25,6 +24,9 @@ with 'App::Repositorio::Plugin::Base';
 has packages_dir => ( is => 'ro', default => 'Packages' );
 has repodata_dir => ( is => 'ro', default => 'repodata' );
 
+my @metadata_files_base =
+  ( { type => 'repomd', location => 'repodata/repomd.xml' } );
+
 sub get_metadata {
   my $self = shift;
   my $arch = shift;
@@ -32,12 +34,10 @@ sub get_metadata {
   my $base_dir = File::Spec->catdir( $self->dir(), $arch );
   my $packages;
 
-  my @metadata_files =
-    ( { type => 'repomd', location => 'repodata/repomd.xml' } );
-
 URL_LOOP:
   for my $url ( @{ $self->{url} } ) {
 
+    my @metadata_files = @metadata_files_base;
     for my $m (@metadata_files) {
       my $type     = $m->{'type'};
       my $location = $m->{'location'};
@@ -109,12 +109,19 @@ sub read_metadata {
   my $self = shift;
   my $arch = shift;
 
-  my $base_dir = File::Spec->catdir( $self->dir(), $arch );
+  my $base_dir = File::Spec->catdir( $self->dir, $arch );
+
+  return $self->_read_metadata($base_dir)
+
+}
+
+sub _read_metadata {
+
+  my $self = shift;
+  my $base_dir = shift;
   my $files = {};
 
-  my @metadata_files =
-    ( { type => 'repomd', location => 'repodata/repomd.xml' } );
-
+  my @metadata_files = @metadata_files_base;
   for my $m (@metadata_files) {
     my $type      = $m->{'type'};
     my $location  = $m->{'location'};
@@ -127,12 +134,28 @@ sub read_metadata {
 
       # Parse the xml and retrieve the primary file location
       if ( $type eq 'repomd' ) {
+
+        $self->logger->debug(
+          sprintf(
+            'read_metadata; repo: %s file: %s reading as repomod file',
+            $self->repo(), $dest_file
+          )
+        );
+
         my $data = $self->parse_repomd($dest_file);
         push @metadata_files, @{$data};
       }
 
       # Parse the primary metadata file
       if ( $type eq 'primary' ) {
+
+        $self->logger->debug(
+          sprintf(
+            'read_metadata; repo: %s file: %s reading as primary file',
+            $self->repo(), $dest_file
+          )
+        );
+
         my $contents = $self->get_gzip_contents($dest_file);
         for my $file ( @{ $self->parse_primary($dest_file) } ) {
           $files->{ $file->{'location'} }++;
@@ -480,6 +503,62 @@ sub init_arch {
       )
     );
   }
+
+}
+
+sub diff {
+  my $self = shift;
+  my %o    = validate(
+    @_,
+    {
+      arch     => { type => SCALAR },
+      src_tag  => { type => SCALAR },
+      src_dir  => { type => SCALAR },
+      dest_tag => { type => SCALAR },
+      dest_dir => { type => SCALAR },
+    }
+  );
+
+  $self->logger->debug(
+    sprintf(
+      'diff; repo: %s arch: %s comparing: %s vs %s',
+      $self->repo(),$o{'arch'},$o{'src_tag'},$o{'dest_tag'}
+    )
+  );
+
+  # Check each tag exists
+  for my $dir (qw/src_dir dest_dir/) {
+
+    $self->logger->log_and_die(
+      level   => 'error',
+      message => sprintf(
+        'diff; repo: %s %s: %s does not exist',
+        $self->repo(), $dir, $o{$dir}
+      ),
+    ) unless -d $o{$dir};
+
+  }
+
+  my $srcpackages  = $self->_read_metadata(File::Spec->catdir( $o{src_dir}, $o{arch} ));
+  my $destpackages = $self->_read_metadata(File::Spec->catdir( $o{dest_dir}, $o{arch} ));
+
+  my %diff;
+
+  for my $file (keys %$srcpackages) {
+    $diff{basename($file)}--
+  }
+  for my $file (keys %$destpackages) {
+    $diff{basename($file)}++
+  }
+
+  my %result = ( $o{src_tag} => [], $o{dest_tag} => [] );
+  for my $k (sort keys %diff) {
+    next unless $k =~ m/\.rpm$/; # FIXME this is crude
+    push @{$result{$o{src_tag}}}, $k  if $diff{$k} < 0;
+    push @{$result{$o{dest_tag}}}, $k if $diff{$k} > 0;
+  }
+
+  return \%result
 
 }
 
