@@ -36,6 +36,12 @@ my %check_repo = (
     return ( grep { $r eq $_ } @repos ) ? 1 : 0;
   }
 );
+my %check_tag = (
+  'sensible tag characters' => sub {
+    my $r = shift;
+    return $r =~ m/^[A-z0-9\-_]+$/;
+  }
+);
 
 =head1 DESCRIPTION
 
@@ -893,7 +899,7 @@ sub tag {
     params => \@_,
     spec   => {
       'repo'    => { type => SCALAR,  callbacks => \%check_repo },
-      'tag'     => { type => SCALAR },
+      'tag'     => { type => SCALAR,  callbacks => \%check_tag },
       'src-tag' => { type => SCALAR,  default   => 'head' },
       'symlink' => { type => BOOLEAN, default   => 0 },
       'force'   => { type => BOOLEAN, default   => 0 },
