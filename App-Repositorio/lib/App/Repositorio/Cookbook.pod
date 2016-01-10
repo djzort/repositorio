@@ -1,0 +1,30 @@
+=head1 NAME
+
+App::Repositorio::Cookbook - The Repositorio Cookbook
+
+=head1 FAQ
+
+=head2 Discourage the caching of metadata
+
+Caching actual packages is desirable, but metadata caching will cause strange problems.
+
+Squid and others can be configured to ignore Cache headers, but assuming standard behaviour/configuration:
+
+=head3 Apache
+
+This will set the Cache-Control header for common repodata (yum) metadata files
+
+ <Directory "/srv/packages/linux/data">
+  Options Indexes FollowSymlinks SymLinksifOwnerMatch IncludesNOEXEC
+  IndexOptions NameWidth=* DescriptionWidth=* +FoldersFirst
+
+  # Dont cache files commonly found in repodata/
+  # Note: Internet explorer has issues with no-cache, but who cares in this context
+  <FilesMatch "(repomd\.xml|filelists\.sqlite\.bz2|filelists\.xml\.gz|other\.sqlite\.bz2|other\.xml\.gz|primary\.xml\.gz|primary\.sqlite\.bz2)$">
+  Header set Cache-Control "private, no-cache, no-store, proxy-revalidate, no-transform"
+  Header set Pragma "no-cache"
+ </FilesMatch>
+
+ .. etc ..
+
+

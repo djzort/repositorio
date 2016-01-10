@@ -8,5 +8,4 @@ Refinements
 - add a tag delete option (have it check for soft tags pointing at hard tags before deletion)
 
 Documentation
-- document how to have apache (and others) ask caches not do cache the contents of repodata/ (Yum)
 - document how to have squid (and others) never cache the contents of repodata/ (Yum)
