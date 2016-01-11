@@ -27,4 +27,15 @@ This will set the Cache-Control header for common repodata (yum) metadata files
 
  .. etc ..
 
+=head2 Apache and NFS (Sendfile)
+
+Without going in to detail, this will make Apache go faster when sending content from an NFS mounted directory
+
+ <Directory /nfs/mount>
+ # this helps apache with nfs
+ EnableSendfile off
+
+ .. etc ..
+
+
 
