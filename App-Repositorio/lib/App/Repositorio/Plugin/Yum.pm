@@ -435,6 +435,14 @@ sub del_file {
     );
   }
 
+  if ( $self->url ) {
+    $self->logger->log_and_croak(
+      level   => 'error',
+      message => sprintf 'del_file; repo: %s is a mirrored repo, cannot add files',
+      $self->repo()
+    );
+  }
+
   for my $file ( @${files} ) {
     my $filename = basename($file);
     my $dest_file =
@@ -471,6 +479,14 @@ sub init_arch {
 
   $self->logger->debug( sprintf 'init_arch; repo: %s arch: %s dir: %s',
     $self->repo(), $arch, $dir );
+
+  if ( $self->url ) {
+    $self->logger->log_and_croak(
+      level   => 'error',
+      message => sprintf 'init_arch; repo: %s is a mirrored repo, cannot init',
+      $self->repo()
+    );
+  }
 
   $self->make_dir($dir);
   $self->make_dir( File::Spec->catdir( $dir, $self->packages_dir() ) );
