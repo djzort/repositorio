@@ -297,6 +297,17 @@ sub tag {
     )
   );
 
+  # disallow soft tagging of head
+  if ( $o{'src_tag'} eq 'head' && $o{'symlink'} ) {
+    $self->logger->log_and_die(
+      level   => 'error',
+      message => sprintf(
+        'tag; repo: %s src_tag: head cannot soft tag head'
+        $self->repo()
+      ),
+    )
+  }
+
   # Make sure intended tag matches what we want if present
   if ( $o{'hard_tag_regex'} && !$o{'symlink'} ) {
     $self->logger->log_and_die(
