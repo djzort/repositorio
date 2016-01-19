@@ -9,6 +9,7 @@ use Config::General;
 use Getopt::Long;
 use Log::Dispatch;
 use Pod::Usage;
+use POSIX qw/ strftime /;
 
 use App::Repositorio;
 use App::Repositorio::Logger;
@@ -79,15 +80,22 @@ my @log_outputs = (
   ],
 );
 
-push @log_outputs, [
-  'File',
-  'min_level' => $config->{log_file_level}, # FIXME document this
-  'filename'  => $config->{log_file}, # FIXME document this
-  'newline'   => 1,
-  'mode'      => '>>',
-] if $config->{log_file};
+my @callbacks;
+if ($config->{log_file}) {
+  push @log_outputs, [
+    'File',
+    'min_level' => $config->{log_file_level}, # FIXME document this
+    'filename'  => $config->{log_file}, # FIXME document this
+    'newline'   => 1,
+    'mode'      => '>>', # append
+  ];
+  push @callbacks, sub {my %p=@_; return strftime('%F %T %z: ',localtime) . $p->{message}};
+}
 
-my $logger = Log::Dispatch->new(outputs => \@log_outputs);
+my $logger = Log::Dispatch->new(
+    outputs   => \@log_outputs,
+    callbacks => \@callbacks,
+    );
 $logger->debug('logging initialized.');
 App::Repositorio::Logger->load($logger);
 
