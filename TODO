@@ -1,5 +1,6 @@
 Features
 - speed limit downloads (see https://github.com/shoichikaji/HTTP-Tiny-Bandwidth, now in CPAN)
+- have a configurable action which happens upon successful or unsuccessful actions (maybe just call a shell program, so people can do crazy things)
 
 Refinements
 - move all log_and_croak type functions up to Repositorio.pm, just log info and debug in plugins, then croak() and let upstream decide.

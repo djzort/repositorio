@@ -368,8 +368,16 @@ sub add_file {
   unless ( $self->validate_arch($arch) ) {
     $self->logger->log_and_croak(
       level   => 'error',
-      message => sprintf 'add_file: arch: %s is not in config for repo: %s',
+      message => sprintf 'add_file; arch: %s is not in config for repo: %s',
       $arch, $self->repo()
+    );
+  }
+
+  if ( $self->url ) {
+    $self->logger->log_and_croak(
+      level   => 'error',
+      message => sprintf 'add_file; repo: %s is a mirrored repo, cannot add files',
+      $self->repo()
     );
   }
 
