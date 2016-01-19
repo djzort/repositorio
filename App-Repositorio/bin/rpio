@@ -89,7 +89,7 @@ if ($config->{log_file}) {
     'newline'   => 1,
     'mode'      => '>>', # append
   ];
-  push @callbacks, sub {my %p=@_; return strftime('%F %T %z: ',localtime) . $p->{message}};
+  push @callbacks, sub {my %p=@_; return strftime('%F %T %z: ',localtime) . $p{message}};
 }
 
 my $logger = Log::Dispatch->new(

@@ -1,6 +1,5 @@
-=head1 NAME
-
-App::Repositorio::Cookbook - The Repositorio Cookbook
+# PODNAME: App::Repositorio::Cookbook
+# ABSTRACT: Cookbook for Repositorio
 
 =head1 FAQ
 
