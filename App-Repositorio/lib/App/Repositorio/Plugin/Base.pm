@@ -302,7 +302,7 @@ sub tag {
     $self->logger->log_and_die(
       level   => 'error',
       message => sprintf(
-        'tag; repo: %s src_tag: head cannot soft tag head'
+        'tag; repo: %s src_tag: head cannot soft tag head',
         $self->repo()
       ),
     )
