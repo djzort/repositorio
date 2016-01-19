@@ -331,18 +331,31 @@ sub tag {
   # When dest_dir exists and force is not set do not continue
   # Handle symbolic link destinations
   if ( -l $o{'dest_dir'} ) {
-    if ( $self->force() ) {
-      unlink $o{'dest_dir'};
+    if ( $o{'symlink'} ) {
+      if ( $self->force() ) {
+        unlink $o{'dest_dir'};
+      }
+      else {
+        $self->logger->log_and_die(
+          level   => 'error',
+          message => sprintf(
+            'tag; repo: %s dest_dir: %s exists and force not enabled.',
+            $self->repo(), $o{'dest_dir'}
+          ),
+        );
+      }
+
     }
+    # if $o{'symlink
     else {
       $self->logger->log_and_die(
         level   => 'error',
         message => sprintf(
-          'tag; repo: %s dest_dir: %s exists and force not enabled.',
+          'tag; repo: %s dest_dir: %s exists as symlink. manual intervention required.',
           $self->repo(), $o{'dest_dir'}
         ),
       );
-    }
+    } # if $o{'symlink
   }
 
   # Handle hard linked destinations
@@ -374,7 +387,7 @@ sub tag {
     );
     find(
       sub {
-        if ( $_ !~ /^[\.]+$/ ) {
+        if ( $_ !~ m/^[\.]+$/ ) {
           my $src_path = $File::Find::name;
           my $path = File::Spec->abs2rel( $File::Find::name, $o{'src_dir'} );
           if ( -d $src_path ) {
