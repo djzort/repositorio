@@ -689,11 +689,16 @@ sub init {
 
 Action: list
 
-Description: Lists the repositories as reflected in the config
+Description: Lists the repositories as reflected in the config, or lists
+current tags if a repo name is provided.
 
 Options:
 
 =over 4
+
+=item repo
+
+The repo, from which the tags will be listed.
 
 =item format
 
@@ -703,20 +708,11 @@ The output format. Either I<json>, I<csv> or I<default>.
 
 =cut
 
-sub list {
+sub _list_repos {
   my $self = shift;
-  my %o    = validate_with(
-    params => \@_,
-    spec   => {
-      format => {
-        type    => SCALAR,
-        default => 'default',
-        regex   => qw/^(default|json|csv)$/
-      },
-    }
-  );
+  my %o    = @_;
 
-# perhaps this next section could be more elegant, but doing things manually keeps deps down
+  # perhaps this next section could be more elegant, but doing things manually keeps deps down
 
   if ( $o{format} eq 'default' ) {
     print "Repository list:\n";
@@ -756,6 +752,118 @@ sub list {
   }
 
   # shouldnt get here
+  die 'unknown format? shouldnt get here';
+
+}
+
+# FIXME this should probably be implemened in the plugin?
+sub _list_tags {
+
+  my $self = shift;
+  my %o    = @_;
+
+  my %tags;
+  my $path;
+  {
+    my $data_dir  = $self->config->{data_dir};
+    my $tag_style = $self->config->{tag_style};
+    my $repo      = $o{'repo'};
+    my $tag       = $o{'tag'};
+    my $local     = $self->config->{'repo'}->{$repo}->{'local'};
+
+    if ( $tag_style eq 'topdir' ) {
+      $path = $data_dir
+    }
+    elsif ( $tag_style eq 'bottomdir' ) {
+      $path = File::Spec->catdir( $data_dir, $local );
+    }
+    else {
+      $self->logger->log_and_croak(
+        level   => 'error',
+        message => '_list_tags; Unknown tag_style: ' . $tag_style . "\n"
+      );
+    }
+  }
+
+  opendir(my $dh, $path)
+    or $self->logger->log_and_croak(
+         level => 'error',
+         message => '_list_tags; Unable to opendir: ' . $!
+      );
+
+  for my $tag ( grep { $_ !~ m/^\.\.?$/ }
+                readdir($dh)) {
+
+    my $tagpath = File::Spec->catdir( $path, $tag );
+    if ( -d $tagpath ) {
+      if ( -l $tagpath ) {
+        my $htag = readlink $tagpath;
+        $htag = (File::Spec->splitdir($htag))[-1];
+        push @{$tags{$htag}}, $tag;
+      }
+      else {
+        $tags{$tag} ||= [];
+      }
+    }
+  }
+
+  close $dh;
+
+  if ( $o{format} eq 'default' ) {
+    print "Tag list for $o{repo}:\n";
+    printf "|%20s|%20s|\n", 'Name', 'Soft Tag';
+    for my $tag (sort keys %tags) {
+      print sprintf "|%20s|%20s|\n", $tag, '';
+      for my $stag (@{$tags{$tag}}) {
+        print sprintf "|%20s|%20s|\n", $tag, $stag;
+      }
+    }
+    return 1;
+  }
+
+  if ( $o{format} eq 'json' ) {
+    my @list;
+    for my $tag (sort keys %tags) {
+      my $line = '{"tag":"' . $tag . '"';
+      if (@{$tags{$tag}}) {
+        $line .= ',"soft tag":[';
+        $line .= join(',',map { qq|"$_"| } @{$tags{$tag}});
+        $line .= ']';
+      };
+      $line .= '}';
+      push @list, $line
+    }
+    print '{"repo":"',$o{'repo'},'",';
+    print '"tags":[', join( ',', @list );
+    print "]}\n";
+    return 1;
+  }
+
+}
+
+sub list {
+  my $self = shift;
+  my %o    = validate_with(
+    params => \@_,
+    spec   => {
+      repo   => {
+        type => SCALAR,
+        callbacks => \%check_repo
+      },
+      format => {
+        type    => SCALAR,
+        default => 'default',
+        regex   => qw/^(default|json|csv)$/
+      },
+    }
+  );
+
+  if ($o{repo}) {
+    return $self->_list_tags(%o)
+  }
+
+  return $self->_list_repos(%o)
+
 }
 
 =item B<mirror()>

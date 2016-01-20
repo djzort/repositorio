@@ -131,6 +131,7 @@ Stay tuned for more!
   Actions:
     list      List all configured repositories
       optional:
+        --repo $repository_name
         --format (default|csv|json)
     mirror    Mirror a repository
       requires:
@@ -201,7 +202,7 @@ Stay tuned for more!
   # Working with tags:
   # Lets say upstream added broken updates you can easily roll back your production tag just by:
   # --force is needed if a destination tag already exists
-  rpio --action tag --repo $repo --src-tag $last_stable_releas_tag --symlink --tag production --force 
+  rpio --action tag --repo $repo --src-tag $last_stable_releas_tag --symlink --tag production --force
 
 =head1 CONFIGURATION
 
