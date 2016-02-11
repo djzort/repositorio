@@ -848,6 +848,7 @@ sub list {
     spec   => {
       repo   => {
         type => SCALAR,
+        optional => 1,
         callbacks => \%check_repo
       },
       format => {

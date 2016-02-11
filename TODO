@@ -3,6 +3,7 @@ Features
 - have a configurable action which happens upon successful or unsuccessful actions (maybe just call a shell program, so people can do crazy things)
 - CSV output for lists of tags - no idea how to represent this?
 - if only one arch, dont require it when adding/deleting file
+- having --version would be handy
 
 Refinements
 - move all log_and_croak type functions up to Repositorio.pm, just log info and debug in plugins, then croak() and let upstream decide.
