@@ -1,5 +1,6 @@
 # PODNAME: App::Repositorio::Cookbook
 # ABSTRACT: Cookbook for Repositorio
+# vim: softtabstop=2 tabstop=2 shiftwidth=2 ft=perl expandtab smarttab
 
 =head1 FAQ
 

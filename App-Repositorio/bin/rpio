@@ -267,6 +267,16 @@ This can be applied globally and per repository, in which case the repository ta
 
 Note: this regex is not applied against symlink tags
 
+=item B<proxy>
+
+You can use this setting to specify a http and https proxy eg:
+
+  proxy http://192.0.2.1:3128
+
+This can also be specified on a per-repo basis or globally, the per-repo setting will be prefered over the global setting. So you can use a global proxy, with some repos using their own specific proxy.
+
+Alternatively, since we are using L<HTTP::Tiny> internally various environment variables can also be used to specify a proxy to be used. Please consider this unsupported though, as we may change this out in the future without warning - and plugins may use whatever makes sense to them.
+
 =item B<Repository Config>
 
 A repository is defined as:

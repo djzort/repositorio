@@ -45,17 +45,22 @@ has repo          => ( is => 'ro', required => 1 );
 has ssl_ca        => ( is => 'ro', optional => 1 );
 has ssl_cert      => ( is => 'ro', optional => 1 );
 has ssl_key       => ( is => 'ro', optional => 1 );
+has proxy         => ( is => 'ro', optional => 1 );
 has url           => ( is => 'ro', optional => 1 );
 
 sub _build_http {
   my $self = shift;
 
   my %o;
-  $o{SSL_options}->{'SSL_ca_file'} = $self->ssl_ca() if $self->can('ssl_ca');
+  $o{SSL_options}->{'SSL_ca_file'}   = $self->ssl_ca()
+    if $self->can('ssl_ca');
   $o{SSL_options}->{'SSL_cert_file'} = $self->ssl_cert()
     if $self->can('ssl_cert');
-  $o{SSL_options}->{'SSL_key_file'} = $self->ssl_key()
+  $o{SSL_options}->{'SSL_key_file'}  = $self->ssl_key()
     if $self->can('ssl_key');
+
+  $o{proxy} = $self->proxy()
+    if $self->can('proxy');
 
   return HTTP::Tiny->new(%o);
 }

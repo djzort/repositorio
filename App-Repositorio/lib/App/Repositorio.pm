@@ -208,7 +208,7 @@ sub _validate_config {
   # required params for each repo config
   for my $repo (@repos) {
 
-# Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
+    # Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
     if ( my $url = $self->config->{'repo'}->{$repo}->{'url'} ) {
       my $urles = ref($url) eq 'ARRAY' ? $url : [$url];
       $self->config->{'repo'}->{$repo}->{'url'} = $urles;
@@ -256,6 +256,11 @@ sub _validate_config {
 
     } # if my $url
 
+    # If there is a global proxy setting, set it in the repo UNLESS the repo has its own proxy
+    if ($self->config->{'proxy'}) {
+      $self->config->{'repo'}->{$repo}->{'proxy'} ||= $proxy
+    }
+
     # type local and arch are required params for ALL repos
   REPO_PARAM_LOOP:
     for my $param (qw/type local arch/) {
@@ -263,19 +268,18 @@ sub _validate_config {
         level   => 'error',
         message => sprintf "repo: %s missing param: %s\n",
         $repo, $param,
-      ) unless $self->config->{repo}->{$repo}->{$param};
+      ) unless $self->config->{'repo'}->{$repo}->{$param};
 
       # Data validation for specific types
 
-# Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
+      # Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
       if ( $param eq 'arch' ) {
-
-# We allow identical options which we use for arch, lets end up with an array regardless
+        # We allow identical options which we use for arch, lets end up with an array regardless
         my $arch = $self->config->{'repo'}->{$repo}->{'arch'};
         my $arches = ref($arch) eq 'ARRAY' ? $arch : [$arch];
         $self->config->{'repo'}->{$repo}->{'arch'} = $arches;
         next REPO_PARAM_LOOP;
-      }
+      } # if ( $param eq 'arch' ) {
 
       # Allowed types
       if ( $param eq 'type' ) {
@@ -294,8 +298,8 @@ sub _validate_config {
           );
         }
         next REPO_PARAM_LOOP;
-      }
-    }
+      } # if ( $param eq 'type' ) {
+    } # REPO_PARAM_LOOP
   }
 
   return 1;
