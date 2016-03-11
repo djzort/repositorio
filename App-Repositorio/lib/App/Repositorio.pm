@@ -258,7 +258,7 @@ sub _validate_config {
 
     # If there is a global proxy setting, set it in the repo UNLESS the repo has its own proxy
     if ($self->config->{'proxy'}) {
-      $self->config->{'repo'}->{$repo}->{'proxy'} ||= $proxy
+      $self->config->{'repo'}->{$repo}->{'proxy'} ||= $self->config->{'proxy'}
     }
 
     # type local and arch are required params for ALL repos
