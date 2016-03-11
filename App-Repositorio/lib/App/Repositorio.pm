@@ -256,11 +256,6 @@ sub _validate_config {
 
     } # if my $url
 
-    # If there is a global proxy setting, set it in the repo UNLESS the repo has its own proxy
-    if ($self->config->{'proxy'}) {
-      $self->config->{'repo'}->{$repo}->{'proxy'} ||= $self->config->{'proxy'}
-    }
-
     # type local and arch are required params for ALL repos
   REPO_PARAM_LOOP:
     for my $param (qw/type local arch/) {
@@ -950,12 +945,13 @@ sub _mirror {
     checksums => $o{'checksums'},
     dir       => $self->_get_repo_dir( repo => $o{'repo'} ),
     include_filename => $self->config->{'repo'}->{ $o{'repo'} }->{'include_filename'} || undef,
-    include_package => $self->config->{'repo'}->{ $o{'repo'} }->{'include_package'} || undef,
+    include_package  => $self->config->{'repo'}->{ $o{'repo'} }->{'include_package'} || undef,
     exclude_filename => $self->config->{'repo'}->{ $o{'repo'} }->{'exclude_filename'} || undef,
-    exclude_package => $self->config->{'repo'}->{ $o{'repo'} }->{'exclude_package'} || undef,
+    exclude_package  => $self->config->{'repo'}->{ $o{'repo'} }->{'exclude_package'} || undef,
     ssl_ca    => $self->config->{'repo'}->{ $o{'repo'} }->{'ca'} || undef,
     ssl_cert  => $self->config->{'repo'}->{ $o{'repo'} }->{'cert'} || undef,
     ssl_key   => $self->config->{'repo'}->{ $o{'repo'} }->{'key'} || undef,
+    proxy     => $self->config->{'repo'}->{ $o{'repo'} }->{'proxy'} || $self->config->{'proxy'} || undef,
     force     => $o{'force'},
     'ignore_errors' => $o{'ignore-errors'},
   };
