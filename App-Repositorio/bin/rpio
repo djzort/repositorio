@@ -271,7 +271,7 @@ Note: this regex is not applied against symlink tags
 
 You can use this setting to specify a http and https proxy eg:
 
-  proxy http://192.0.2.1:3128
+  proxy = http://192.0.2.1:3128
 
 This can also be specified on a per-repo basis or globally, the per-repo setting will be prefered over the global setting. So you can use a global proxy, with some repos using their own specific proxy.
 
