@@ -47,6 +47,7 @@ has ssl_cert      => ( is => 'ro', optional => 1 );
 has ssl_key       => ( is => 'ro', optional => 1 );
 has proxy         => ( is => 'ro', optional => 1 );
 has url           => ( is => 'ro', optional => 1 );
+has cli_args      => ( is => 'ro', optional => 1 );
 
 sub _build_http {
   my $self = shift;

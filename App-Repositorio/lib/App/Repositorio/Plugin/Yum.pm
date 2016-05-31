@@ -506,7 +506,12 @@ sub init_arch {
     );
   }
 
-  my @cmd = ( $createrepo_bin, '--basedir', $dir, '--outputdir', $dir, $dir );
+  my @yumoptions;
+  if (my $args = $self->cli_args) {
+    push @yumoptions, @$args
+  }
+
+  my @cmd = ( $createrepo_bin, @yumoptions, '--basedir', $dir, '--outputdir', $dir, $dir );
 
 # --update will reuse the existing metadata if the file is already defined and size/mtime matches
 # dont do this if we're forcing or the repomd.xml doesnt exist

@@ -256,7 +256,7 @@ sub _validate_config {
 
     } # if my $url
 
-    # type local and arch are required params for ALL repos
+  # type local and arch are required params for ALL repos
   REPO_PARAM_LOOP:
     for my $param (qw/type local arch/) {
       $self->logger->log_and_croak(
@@ -295,6 +295,14 @@ sub _validate_config {
         next REPO_PARAM_LOOP;
       } # if ( $param eq 'type' ) {
     } # REPO_PARAM_LOOP
+
+    # Turn add_args, del_args and init_args into an array
+    for my $param (qw/ add_args del_args init_args /) {
+      my $foo = $self->config->{'repo'}->{$repo}->{$param}
+          or next;
+      my $fooes = ref($foo) eq 'ARRAY' ? $foo : [$foo];
+      $self->config->{'repo'}->{$repo}->{$param} = $fooes
+    }
   }
 
   return 1;
@@ -399,14 +407,16 @@ sub add_file {
       'force' => { type => BOOLEAN, default   => 0 },
     },
   );
+  my $repo_config = $self->config->{'repo'}->{ $o{'repo'} };
   my $options = {
-    repo    => $o{'repo'},
-    arches  => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
-    dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
-    force   => $o{'force'},
+    repo     => $o{'repo'},
+    arches  => $repo_config->{'arch'},
+    dir      => $self->_get_repo_dir( repo => $o{'repo'} ),
+    force    => $o{'force'},
+    cli_args => $repo_config->{'add_args'} || '',
   };
   my $plugin = $self->_get_plugin(
-    type    => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
+    type    => $repo_config->{'type'},
     options => $options,
   );
 
@@ -449,14 +459,16 @@ sub del_file {
       'file' => { type => SCALAR | ARRAYREF },
     },
   );
+  my $repo_config = $self->config->{'repo'}->{ $o{'repo'} };
   my $options = {
-    repo    => $o{'repo'},
-    arches  => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
-    dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
-    force   => $o{'force'},
+    repo     => $o{'repo'},
+    arches   => $repo_config->{'arch'},
+    dir      => $self->_get_repo_dir( repo => $o{'repo'} ),
+    force    => $o{'force'},
+    cli_args => $repo_config->{'del_args'} || '',
   };
   my $plugin = $self->_get_plugin(
-    type    => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
+    type    => $repo_config->{'type'},
     options => $options,
   );
 
@@ -606,14 +618,17 @@ sub clean {
 sub _clean {
   my ( $self, %o ) = @_;
 
+  my $repo_config = $self->config->{'repo'}->{ $o{'repo'} };
+
   my $options = {
     repo    => $o{'repo'},
-    arches  => $self->config->{'repo'}->{ $o{'repo'} }->{'arch'},
+    arches  => $repo_config->{'arch'},
     dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
     force   => $o{'force'},
+    cleanargs => $repo_config->{'cleanargs'} || '',
   };
   my $plugin = $self->_get_plugin(
-    type    => $self->config->{'repo'}->{ $o{'repo'} }->{'type'},
+    type    => $repo_config->{'type'},
     options => $options,
   );
 
@@ -668,9 +683,10 @@ sub init {
   }
 
   my $options = {
-    repo    => $o{'repo'},
-    arches  => $repo_config->{'arch'},
-    dir     => $self->_get_repo_dir( repo => $o{'repo'} ),
+    repo     => $o{'repo'},
+    arches   => $repo_config->{'arch'},
+    dir      => $self->_get_repo_dir( repo => $o{'repo'} ),
+    cli_args => $repo_config->{'init_args'} || '',
   };
 
   my $plugin = $self->_get_plugin(
