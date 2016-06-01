@@ -355,9 +355,9 @@ Arguments passed to the cli program used to add, del or init the repo
 
 With rhel5/centos5 for example, you will definitely want to have:
 
- add_args  = --checksum sha
- del_args  = --checksum sha
- init_args = --checksum sha
+ add_args  = --checksum=sha
+ del_args  = --checksum=sha
+ init_args = --checksum=sha
 
 =back
 
