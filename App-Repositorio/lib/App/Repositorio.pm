@@ -208,6 +208,13 @@ sub _validate_config {
   # required params for each repo config
   for my $repo (@repos) {
 
+    # Check for duplicate repo definitions. These will be rendered as arrays
+    $self->logger->log_and_croak(
+      level   => 'error',
+      message => sprintf "repo: %s defined more than once\n",
+      $repo
+    ) if (ref $self->config->{'repo'}->{$repo} eq 'ARRAY');
+
     # Unfortunately Config::General does not allow us to make sure an option is always an array, so force it to an array
     if ( my $url = $self->config->{'repo'}->{$repo}->{'url'} ) {
       my $urles = ref($url) eq 'ARRAY' ? $url : [$url];
