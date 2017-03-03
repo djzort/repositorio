@@ -160,7 +160,7 @@ sub go {
     my $self = shift;
     my $repo = shift;
     $self->logger->info("Unlocking $repo via $lockf");
-    flock( $lockfh, LOCK_EX )
+    flock( $lockfh, LOCK_UN )
       or $self->logger->log_and_croak(
       level   => 'error',
       message => "Couldnt unlock $repo"
@@ -171,7 +171,7 @@ sub go {
 
   END {
     if ( defined $lockfh && fileno $lockfh ) {
-      flock( $lockfh, LOCK_EX );
+      flock( $lockfh, LOCK_UN );
       close $lockfh;
     }
     if ( $lockf and -f $lockf ) {
